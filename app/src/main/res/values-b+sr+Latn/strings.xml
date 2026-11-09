@@ -1,0 +1,85 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="app_name">Ultra Talking Pulse</string>
+    <string name="tagline">Puls i disanje preko kamere, uz glasovno vođenje.</string>
+
+    <!-- Dugmad -->
+    <string name="btn_start">Započni merenje</string>
+    <string name="btn_stop">Zaustavi merenje</string>
+    <string name="btn_repeat">Ponovi poslednju poruku</string>
+    <string name="btn_privacy">Privatnost i saglasnost</string>
+    <string name="btn_about">O aplikaciji Ultra Talking Pulse</string>
+    <string name="btn_agree">Slažem se</string>
+    <string name="btn_exit">Izađi</string>
+    <string name="btn_close">Zatvori</string>
+    <string name="btn_withdraw">Povuci saglasnost i izađi</string>
+
+    <!-- Naslovi i oznake -->
+    <string name="heading_guidance">Uputstva</string>
+    <string name="heading_results">Rezultati</string>
+    <string name="heading_settings">Podešavanja</string>
+    <string name="setting_speech">Glasovna uputstva</string>
+    <string name="setting_cues">Zvuci i vibracija</string>
+    <string name="camera_preview">Prikaz kamere</string>
+    <string name="disclaimer">Ultra Talking Pulse služi samo za opšte blagostanje i radoznalost. Nije medicinski uređaj i ne sme se koristiti za dijagnozu, lečenje niti bilo kakvu medicinsku odluku.</string>
+
+    <!-- Tok merenja -->
+    <string name="idle_hint">Uspravi telefon na stolu, ekranom prema sebi, na otprilike dužinu ruke. Zatim pritisni Započni.</string>
+    <string name="intro">Počinjem. Uspravi telefon na stolu, ekranom prema sebi, na otprilike dužinu ruke. Navodiću te dok se ne namestiš.</string>
+    <string name="good">Dobro.</string>
+    <string name="good_continue">Dobro, nastavljam.</string>
+    <string name="measuring_start">Sada merim. Oko %1$d sekundi. Budi miran, diši normalno i ne pričaj.</string>
+    <string name="halfway">Pola je gotovo.</string>
+    <string name="talking">Molim te, ne pričaj dok merim.</string>
+    <string name="progress_positioning">Tražim tvoj položaj.</string>
+    <string name="progress_measuring">Merenje: %1$d posto.</string>
+    <string name="progress_paused">Merenje: %1$d posto, pauzirano dok položaj ponovo ne bude dobar.</string>
+    <string name="stopped">Merenje je zaustavljeno.</string>
+    <string name="no_results_yet">Još nema rezultata.</string>
+    <string name="camera_denied">Dozvola za kameru nije data. Ultra Talking Pulse mora da koristi kameru za merenje.</string>
+    <string name="no_api_key">Ova verzija nema Presage pristupne podatke. Dodaj API ključ u local.properties ili OAuth fajl presage_services.xml, kako piše u README fajlu.</string>
+    <string name="consent_needed">Prvo prihvati obaveštenje o privatnosti.</string>
+
+    <!-- Uputstva za položaj, po jedno za svaki SmartSpectra kod -->
+    <string name="g_no_face">Ne vidim ti lice. Okreni se prema ekranu i drži telefon na otprilike dužinu ruke.</string>
+    <string name="g_multiple_faces">Vidim više od jednog lica. Pobrini se da samo ti budeš ispred kamere.</string>
+    <string name="g_not_centered">Lice ti je pomereno u stranu. Pomeri se malo ka sredini ekrana.</string>
+    <string name="g_too_close">Preblizu si. Odmakni se malo.</string>
+    <string name="g_too_far">Predaleko si. Primakni se telefonu.</string>
+    <string name="g_size">Podesi razdaljinu od telefona.</string>
+    <string name="g_too_high">Lice ti je previsoko na slici. Spusti malo glavu ili nagni vrh telefona malo od sebe.</string>
+    <string name="g_too_low">Lice ti je prenisko na slici. Podigni malo glavu ili nagni vrh telefona malo ka sebi.</string>
+    <string name="g_not_forward">Okreni lice pravo prema telefonu.</string>
+    <string name="g_too_dark">Previše je mračno. Upali svetlo ili se okreni prema prozoru.</string>
+    <string name="g_too_bright">Previše je svetlo. Ne sedi tako da ti je prozor ili lampa odmah iza leđa.</string>
+    <string name="g_chest">Ne vidim ti grudi. Odmakni telefon malo dalje da ti se vide ramena i grudi.</string>
+    <string name="g_tuning">Kamera se podešava. Samo trenutak.</string>
+    <string name="g_frame_rate">Kamera radi sporo. Više svetla obično pomaže.</string>
+    <string name="g_motion">Previše pokreta. Budi miran.</string>
+
+    <!-- Rezultati -->
+    <string name="r_pulse">Puls: oko %1$d otkucaja u minuti, pouzdanost %2$s.</string>
+    <string name="r_breathing">Disanje: oko %1$d udisaja u minuti, pouzdanost %2$s.</string>
+    <string name="r_pulse_none">Puls: ovaj put nema pouzdanog očitavanja.</string>
+    <string name="r_breathing_none">Disanje: ovaj put nema pouzdanog očitavanja.</string>
+    <string name="r_done">Gotovo.</string>
+    <string name="r_retry_tip">Za bolje očitavanje probaj sa jačim, ravnomernim svetlom i potpuno mirnim telefonom.</string>
+    <string name="conf_high">visoka</string>
+    <string name="conf_medium">srednja</string>
+    <string name="conf_low">niska</string>
+
+    <!-- Greške -->
+    <string name="err_auth">Presage je odbio pristupne podatke aplikacije. Proveri API ključ ili OAuth registraciju, pa ponovo napravi aplikaciju.</string>
+    <string name="err_credits">Za ovaj ključ je potrošen besplatni Presage limit.</string>
+    <string name="err_network">Ne mogu da se povežem sa Presage servisom. Proveri internet vezu i pokušaj ponovo.</string>
+    <string name="err_camera">Kamera nije dostupna. Zatvori druge aplikacije koje koriste kameru i pokušaj ponovo.</string>
+    <string name="err_generic">Nešto nije u redu: %1$s</string>
+
+    <!-- Saglasnost -->
+    <string name="consent_title">Pre nego što počneš</string>
+    <string name="consent_body">Ultra Talking Pulse koristi prednju kameru da proceni tvoj puls i brzinu disanja.\n\n• Kamera je uključena samo dok merenje traje, i tek kada pritisneš Započni.\n• Video obrađuje Presage SmartSpectra SDK na samom telefonu. Ultra Talking Pulse nikada ne snima, ne čuva i ne šalje video ni slike.\n• Rezultati se samo prikazuju na ekranu. Ne čuvaju se i nestaju kada zatvoriš aplikaciju.\n• Aplikacija se povezuje sa Presage serverima da proveri API ključ i broji korišćenje. Opciona anonimna statistika korišćenja u SDK-u je isključena.\n• Meri samo sebe, ili nekoga ko se sa tim složio.\n• Ovo nije medicinski uređaj. Ne koristi ga za dijagnozu ni lečenje.\n\nOvo možeš ponovo pročitati ili povući saglasnost bilo kada, preko dugmeta Privatnost i saglasnost.</string>
+
+    <!-- O aplikaciji -->
+    <string name="about_title">O aplikaciji Ultra Talking Pulse</string>
+    <string name="about_body">Ultra Talking Pulse %1$s\n\nAutor: Demir Ajvazi.\nDeo Ultra porodice pristupačnog softvera.\nGitHub: github.com/demirajvazi10-max\n\nVitalni znaci se procenjuju pomoću Presage SmartSpectra SDK-a.\n\nLicenca: GPL-3.0.</string>
+</resources>

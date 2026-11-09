@@ -1,0 +1,9 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <style name="Theme.UltraTalkingPulse" parent="android:Theme.Material.NoActionBar">
+        <item name="android:colorBackground">#FF0B1020</item>
+        <item name="android:windowBackground">#FF0B1020</item>
+        <item name="android:colorAccent">#FF4FCCC4</item>
+        <item name="android:textColorPrimary">#FFFFFFFF</item>
+    </style>
+</resources>

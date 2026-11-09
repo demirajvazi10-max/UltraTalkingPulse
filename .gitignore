@@ -1,0 +1,15 @@
+# Holds sdk.dir and your Presage API key - never commit it
+local.properties
+# Presage OAuth config - tied to your Presage account
+app/src/main/res/xml/presage_services.xml
+
+.gradle/
+.kotlin/
+build/
+app/build/
+captures/
+.idea/
+*.iml
+.DS_Store
+*.apk
+*.aab

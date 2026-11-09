@@ -1,0 +1,85 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="app_name">Ultra Talking Pulse</string>
+    <string name="tagline">Pulse and breathing from your camera, with spoken guidance.</string>
+
+    <!-- Buttons -->
+    <string name="btn_start">Start measurement</string>
+    <string name="btn_stop">Stop measurement</string>
+    <string name="btn_repeat">Repeat last message</string>
+    <string name="btn_privacy">Privacy and consent</string>
+    <string name="btn_about">About Ultra Talking Pulse</string>
+    <string name="btn_agree">I agree</string>
+    <string name="btn_exit">Exit</string>
+    <string name="btn_close">Close</string>
+    <string name="btn_withdraw">Withdraw consent and exit</string>
+
+    <!-- Headings and labels -->
+    <string name="heading_guidance">Guidance</string>
+    <string name="heading_results">Results</string>
+    <string name="heading_settings">Settings</string>
+    <string name="setting_speech">Spoken guidance</string>
+    <string name="setting_cues">Sounds and vibration</string>
+    <string name="camera_preview">Camera preview</string>
+    <string name="disclaimer">Ultra Talking Pulse is for general wellness and curiosity only. It is not a medical device and must not be used for diagnosis, treatment or any medical decision.</string>
+
+    <!-- Session flow -->
+    <string name="idle_hint">Prop the phone upright on a table, screen facing you, about an arm\'s length away. Then press Start.</string>
+    <string name="intro">Starting. Prop the phone upright on a table, screen facing you, about an arm\'s length away. I will guide you into position.</string>
+    <string name="good">Good.</string>
+    <string name="good_continue">Good, continuing.</string>
+    <string name="measuring_start">Measuring now. About %1$d seconds. Stay still, breathe normally and don\'t talk.</string>
+    <string name="halfway">Halfway.</string>
+    <string name="talking">Please don\'t talk while measuring.</string>
+    <string name="progress_positioning">Finding your position.</string>
+    <string name="progress_measuring">Measuring: %1$d percent.</string>
+    <string name="progress_paused">Measuring: %1$d percent, paused until your position is good again.</string>
+    <string name="stopped">Measurement stopped.</string>
+    <string name="no_results_yet">No results yet.</string>
+    <string name="camera_denied">Camera permission was not granted. Ultra Talking Pulse needs the camera to measure.</string>
+    <string name="no_api_key">No Presage credentials in this build. Add an API key to local.properties, or the OAuth file presage_services.xml, as described in the README.</string>
+    <string name="consent_needed">Please accept the privacy notice first.</string>
+
+    <!-- Guidance phrases, one per SmartSpectra validation code -->
+    <string name="g_no_face">I can\'t find your face. Face the screen and keep the phone about an arm\'s length away.</string>
+    <string name="g_multiple_faces">I see more than one face. Make sure only you are in front of the camera.</string>
+    <string name="g_not_centered">Your face is off to the side. Move a little toward the middle of the screen.</string>
+    <string name="g_too_close">Too close. Move back a little.</string>
+    <string name="g_too_far">Too far. Move closer to the phone.</string>
+    <string name="g_size">Adjust your distance from the phone.</string>
+    <string name="g_too_high">Your face is too high in the picture. Lower your head a little, or tilt the top of the phone slightly away from you.</string>
+    <string name="g_too_low">Your face is too low in the picture. Raise your head a little, or tilt the top of the phone slightly toward you.</string>
+    <string name="g_not_forward">Turn your face straight toward the phone.</string>
+    <string name="g_too_dark">It\'s too dark. Turn on a light or face a window.</string>
+    <string name="g_too_bright">Too bright. Avoid sitting with a window or lamp right behind you.</string>
+    <string name="g_chest">I can\'t see your chest. Move the phone a bit further away so your shoulders and chest are visible.</string>
+    <string name="g_tuning">The camera is adjusting. One moment.</string>
+    <string name="g_frame_rate">The camera is running slowly. More light usually helps.</string>
+    <string name="g_motion">Too much movement. Hold still.</string>
+
+    <!-- Results -->
+    <string name="r_pulse">Pulse: about %1$d beats per minute, %2$s confidence.</string>
+    <string name="r_breathing">Breathing: about %1$d breaths per minute, %2$s confidence.</string>
+    <string name="r_pulse_none">Pulse: no reliable reading this time.</string>
+    <string name="r_breathing_none">Breathing: no reliable reading this time.</string>
+    <string name="r_done">Done.</string>
+    <string name="r_retry_tip">For a better reading, try brighter, even light and keep the phone completely still.</string>
+    <string name="conf_high">high</string>
+    <string name="conf_medium">medium</string>
+    <string name="conf_low">low</string>
+
+    <!-- Errors -->
+    <string name="err_auth">Presage rejected this app\'s credentials. Check the API key or the OAuth registration, then rebuild.</string>
+    <string name="err_credits">The Presage free usage limit has been reached for this key.</string>
+    <string name="err_network">Could not reach the Presage service. Check your internet connection and try again.</string>
+    <string name="err_camera">The camera is not available. Close other apps that use the camera and try again.</string>
+    <string name="err_generic">Something went wrong: %1$s</string>
+
+    <!-- Consent -->
+    <string name="consent_title">Before you start</string>
+    <string name="consent_body">Ultra Talking Pulse uses your front camera to estimate your pulse and breathing rate.\n\n• The camera is on only while a measurement is running, and only after you press Start.\n• Video is processed on this phone by the Presage SmartSpectra SDK. Ultra Talking Pulse never records, saves or uploads video or images.\n• Results are shown on screen only. They are not saved and disappear when you close the app.\n• The app connects to Presage\'s servers to verify its API key and count usage. The SDK\'s optional anonymous usage statistics are turned off.\n• Measure only yourself, or someone who has agreed to it.\n• This is not a medical device. Do not use it for diagnosis or treatment.\n\nYou can read this again or withdraw your consent at any time from the Privacy and consent button.</string>
+
+    <!-- About -->
+    <string name="about_title">About Ultra Talking Pulse</string>
+    <string name="about_body">Ultra Talking Pulse %1$s\n\nCreated by Demir Ajvazi.\nPart of the Ultra family of accessible software.\nGitHub: github.com/demirajvazi10-max\n\nVital signs are estimated with the Presage SmartSpectra SDK.\n\nLicensed under GPL-3.0.</string>
+</resources>
