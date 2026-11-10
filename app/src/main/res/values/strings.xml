@@ -69,6 +69,8 @@
     <string name="conf_low">low</string>
 
     <!-- Errors -->
+    <string name="err_offline">No internet connection. Ultra Talking Pulse needs the internet to start a measurement. Turn on Wi-Fi or mobile data and try again.</string>
+    <string name="err_start_timeout">The measurement could not start on this phone. The camera analysis did not respond. Please try again; if it keeps happening, this phone may not be supported.</string>
     <string name="err_auth">Presage rejected this app\'s credentials. Check the API key or the OAuth registration, then rebuild.</string>
     <string name="err_credits">The Presage free usage limit has been reached for this key.</string>
     <string name="err_network">Could not reach the Presage service. Check your internet connection and try again.</string>

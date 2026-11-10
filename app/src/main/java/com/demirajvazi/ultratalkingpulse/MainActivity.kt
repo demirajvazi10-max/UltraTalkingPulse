@@ -7,6 +7,8 @@ import android.content.pm.PackageManager
 import android.graphics.Color
 import android.graphics.Typeface
 import android.graphics.drawable.GradientDrawable
+import android.net.ConnectivityManager
+import android.net.NetworkCapabilities
 import android.os.Bundle
 import android.os.SystemClock
 import android.util.TypedValue
@@ -55,6 +57,8 @@ class MainActivity : ComponentActivity() {
         const val MEASURE_MS = MEASURE_SECONDS * 1000L
         const val TALK_WARNING_INTERVAL_MS = 12_000L
         const val TICK_MS = 200L
+        /** If the SDK sends no status at all within this time, the start is treated as failed. */
+        const val START_TIMEOUT_MS = 25_000L
 
         const val OK = "OK"
     }
@@ -88,6 +92,8 @@ class MainActivity : ComponentActivity() {
     private var halfwayAnnounced = false
     private var lastTalkWarningAt = 0L
     private var lastMessage: String = ""
+    private var sessionStartedAt = 0L
+    private var gotFirstStatus = false
     private var pulse: Reading? = null
     private var breathing: Reading? = null
 
@@ -199,6 +205,10 @@ class MainActivity : ComponentActivity() {
             showMessage(getString(R.string.no_api_key), speak = true)
             return
         }
+        if (!isOnline()) {
+            showMessage(getString(R.string.err_offline), speak = true)
+            return
+        }
         if (ContextCompat.checkSelfPermission(this, Manifest.permission.CAMERA)
             != PackageManager.PERMISSION_GRANTED
         ) {
@@ -206,6 +216,14 @@ class MainActivity : ComponentActivity() {
             return
         }
         beginSession()
+    }
+
+    /** True when the phone has a working internet connection (Wi-Fi or mobile data). */
+    private fun isOnline(): Boolean {
+        val manager = getSystemService(ConnectivityManager::class.java) ?: return true
+        val caps = manager.getNetworkCapabilities(manager.activeNetwork) ?: return false
+        return caps.hasCapability(NetworkCapabilities.NET_CAPABILITY_INTERNET) &&
+            caps.hasCapability(NetworkCapabilities.NET_CAPABILITY_VALIDATED)
     }
 
     @Suppress("DiscouragedApi") // Looked up by name because the file is optional and not committed.
@@ -233,6 +251,8 @@ class MainActivity : ComponentActivity() {
         window.addFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON)
 
         showMessage(getString(R.string.intro), speak = true)
+        sessionStartedAt = SystemClock.elapsedRealtime()
+        gotFirstStatus = false
         startSdk()
         startTicker()
     }
@@ -257,10 +277,17 @@ class MainActivity : ComponentActivity() {
         if (phase == Phase.IDLE) return
         if (retryInFlight) return
 
+        // Without internet the SDK can't authenticate; say that plainly instead of a sign-in error.
+        if (!isOnline()) {
+            endSession(getString(R.string.err_offline))
+            return
+        }
+
         // First failure while asking for the optional "talking" metric: try again without it.
         if (talkingRequested && (code == "CONFIGURATION_FAILED" || code == "AUTHENTICATION_FAILED")) {
             talkingRequested = false
             retryInFlight = true
+            sessionStartedAt = SystemClock.elapsedRealtime()
             lifecycleScope.launch {
                 runCatching { sdk.reset() }
                 applyRequestedMetrics()
@@ -280,6 +307,7 @@ class MainActivity : ComponentActivity() {
     }
 
     private fun onValidation(code: String, hint: String?) {
+        gotFirstStatus = true
         currentCode = code
         currentHint = hint
         if (code != candidateCode) {
@@ -304,6 +332,13 @@ class MainActivity : ComponentActivity() {
         val now = SystemClock.elapsedRealtime()
         val elapsed = now - lastTickAt
         lastTickAt = now
+
+        // Watchdog: never wait forever if the SDK doesn't start on this phone.
+        if (!gotFirstStatus && !retryInFlight && now - sessionStartedAt > START_TIMEOUT_MS) {
+            android.util.Log.w("UltraTalkingPulse", "No status from SmartSpectra within ${START_TIMEOUT_MS} ms")
+            endSession(getString(if (isOnline()) R.string.err_start_timeout else R.string.err_offline))
+            return
+        }
 
         // Speak a position change only once it has settled, and never over another message.
         val code = candidateCode

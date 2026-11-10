@@ -33,6 +33,8 @@ Part of the Ultra family of accessible software. *Creative tools that start with
 - Large buttons (at least 56 dp), real headings for quick navigation, high-contrast dark theme, portrait layout with no hidden gestures.
 - Speech and sounds/vibration can each be switched off.
 - **About** and **How to support this project** are available from the main screen, in English and Serbian.
+- **Clear when offline.** Measurements need an internet connection (the SDK authenticates with Presage). The app checks for one before starting and says so plainly, instead of showing a confusing sign-in error.
+- **Never stuck.** If the SDK sends no status within 25 seconds of pressing Start (for example on a phone it doesn't support), the app says so and stops, instead of waiting forever.
 - **Bilingual:** English and Serbian (Latin script). The language follows the phone, or can be set per app in Android 13+. Serbian speech falls back to a Croatian or Bosnian voice if no Serbian voice is installed.
 
 ## Consent and data handling

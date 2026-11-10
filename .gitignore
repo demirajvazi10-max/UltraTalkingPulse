@@ -13,3 +13,6 @@ captures/
 .DS_Store
 *.apk
 *.aab
+
+# Debug logs
+logcat*.txt

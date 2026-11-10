@@ -69,6 +69,8 @@
     <string name="conf_low">niska</string>
 
     <!-- Greške -->
+    <string name="err_offline">Nema internet veze. Ultra Talking Pulse treba internet da bi započeo merenje. Uključi Wi-Fi ili mobilne podatke i pokušaj ponovo.</string>
+    <string name="err_start_timeout">Merenje nije moglo da počne na ovom telefonu, jer analiza slike sa kamere nije odgovorila. Pokušaj ponovo. Ako se ponavlja, ovaj telefon možda nije podržan.</string>
     <string name="err_auth">Presage je odbio pristupne podatke aplikacije. Proveri API ključ ili OAuth registraciju, pa ponovo napravi aplikaciju.</string>
     <string name="err_credits">Za ovaj ključ je potrošen besplatni Presage limit.</string>
     <string name="err_network">Ne mogu da se povežem sa Presage servisom. Proveri internet vezu i pokušaj ponovo.</string>
