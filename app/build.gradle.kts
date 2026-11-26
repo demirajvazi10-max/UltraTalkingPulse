@@ -29,7 +29,7 @@ android {
         targetSdk = 36
         // the GitHub workflow passes the version of the tag (-PappVersion=1.0.0 -PappVersionCode=12)
         versionCode = (project.findProperty("appVersionCode") as String?)?.toIntOrNull() ?: 1
-        versionName = (project.findProperty("appVersion") as String?) ?: "1.0.0"
+        versionName = (project.findProperty("appVersion") as String?) ?: "1.1.0"
         buildConfigField("String", "PRESAGE_API_KEY", "\"${presageApiKey.asBuildConfigString()}\"")
     }
 
@@ -61,5 +61,5 @@ dependencies {
     implementation("androidx.lifecycle:lifecycle-runtime-ktx:2.10.0")
     implementation("androidx.camera:camera-view:1.6.0")
 
-    implementation("com.presagetech:smartspectra:3.4.0")
+    implementation("com.presagetech:smartspectra:3.5.0")
 }

@@ -33,6 +33,8 @@ class Announcer(private val context: Context) : TextToSpeech.OnInitListener {
 
     private var tts: TextToSpeech? = TextToSpeech(context.applicationContext, this)
     private var ttsReady = false
+    /** A message asked for before the voice finished loading; spoken as soon as it is ready. */
+    private var pendingText: String? = null
     private val tone: ToneGenerator? =
         runCatching { ToneGenerator(AudioManager.STREAM_MUSIC, 70) }.getOrNull()
 
@@ -40,6 +42,12 @@ class Announcer(private val context: Context) : TextToSpeech.OnInitListener {
         if (status != TextToSpeech.SUCCESS) return
         ttsReady = true
         chooseVoiceLanguage()
+        pendingText?.let { text ->
+            pendingText = null
+            if (speechEnabled && !isScreenReaderOn()) {
+                tts?.speak(text, TextToSpeech.QUEUE_FLUSH, null, "ultra-talking-pulse")
+            }
+        }
     }
 
     private fun chooseVoiceLanguage() {
@@ -74,6 +82,8 @@ class Announcer(private val context: Context) : TextToSpeech.OnInitListener {
             anchor.announceForAccessibility(text)
         } else if (ttsReady) {
             tts?.speak(text, TextToSpeech.QUEUE_FLUSH, null, "ultra-talking-pulse")
+        } else {
+            pendingText = text
         }
     }
 
@@ -91,6 +101,19 @@ class Announcer(private val context: Context) : TextToSpeech.OnInitListener {
         vibrate(anchor)
     }
 
+    /** Higher tone: "breathe in". */
+    fun cueInhale(anchor: View) {
+        if (!cuesEnabled) return
+        tone?.startTone(ToneGenerator.TONE_DTMF_D, 220)
+        vibrate(anchor)
+    }
+
+    /** Lower tone: "breathe out". */
+    fun cueExhale(anchor: View) {
+        if (!cuesEnabled) return
+        tone?.startTone(ToneGenerator.TONE_DTMF_1, 220)
+    }
+
     private fun vibrate(anchor: View) {
         val effect = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
             HapticFeedbackConstants.CONFIRM
@@ -102,6 +125,7 @@ class Announcer(private val context: Context) : TextToSpeech.OnInitListener {
 
     fun stopSpeaking() {
         tts?.stop()
+        pendingText = null
         busyUntil = 0L
     }
 

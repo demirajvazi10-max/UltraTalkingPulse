@@ -32,6 +32,7 @@ import com.presagetech.smartspectra.CameraSelection
 import com.presagetech.smartspectra.SmartSpectraConfig
 import com.presagetech.smartspectra.SmartSpectraSdk
 import com.presagetech.smartspectra.proto.MetricTypesProto.MetricType
+import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.isActive
@@ -42,9 +43,13 @@ class MainActivity : ComponentActivity() {
 
     private companion object {
         const val PREFS = "ultra_talking_pulse"
-        const val KEY_CONSENT = "consent_v1"
+        // v2: the notice now also covers the optional AI explanation, so everyone sees it once more.
+        const val KEY_CONSENT = "consent_v2"
         const val KEY_SPEECH = "speech"
         const val KEY_CUES = "cues"
+        const val KEY_AI = "ai_explanation"
+        const val KEY_READINESS = "readiness_verdict"
+        const val KEY_READINESS_SDK = "readiness_sdk_version"
 
         /** How long a validation code must stay the same before it is spoken. */
         const val SETTLE_MS = 800L
@@ -52,18 +57,38 @@ class MainActivity : ComponentActivity() {
         const val GAP_MS = 700L
         /** How long the position must be good before measuring starts. */
         const val OK_HOLD_MS = 1500L
-        /** Measuring time, counted only while the position is good. */
-        const val MEASURE_SECONDS = 40
+        /** Measuring time, counted only while the position is good. HRV needs about 60 seconds. */
+        const val MEASURE_SECONDS = 60
         const val MEASURE_MS = MEASURE_SECONDS * 1000L
         const val TALK_WARNING_INTERVAL_MS = 12_000L
         const val TICK_MS = 200L
         /** If the SDK sends no status at all within this time, the start is treated as failed. */
         const val START_TIMEOUT_MS = 25_000L
+        /** How long to wait for the AI explanation before giving up. */
+        const val INSIGHT_TIMEOUT_MS = 30_000L
+        /** The phone check is tried this many times while the SDK is still signing in, this far apart. */
+        const val READINESS_ATTEMPTS = 3
+        const val READINESS_RETRY_MS = 3_000L
+        /** Extra time the screen stays on after the last message, for slower speech rates. */
+        const val SCREEN_RELEASE_MARGIN_MS = 15_000L
+
+        // Guided breathing: in for 4 seconds, out for 6 (6 breaths a minute), 12 breaths = 2 minutes.
+        const val INHALE_MS = 4_000L
+        const val EXHALE_MS = 6_000L
+        const val EXERCISE_BREATHS = 12
+        /** When the live breathing rate is read out during the exercise. */
+        const val EXERCISE_FEEDBACK_AT_MS = 60_000L
+        /** During the exercise, a lost position is mentioned only after this long... */
+        const val LOST_POSITION_MS = 5_000L
+        /** ...and at most this often, so the breathing rhythm isn't drowned out. */
+        const val LOST_POSITION_REPEAT_MS = 20_000L
 
         const val OK = "OK"
     }
 
-    private enum class Phase { IDLE, POSITIONING, MEASURING }
+    private enum class Mode { MEASURE, BREATHE }
+
+    private enum class Phase { IDLE, CHECKING, POSITIONING, MEASURING, EXERCISING, EXPLAINING }
 
     private data class Reading(val value: Double, val confidence: Float)
 
@@ -75,12 +100,20 @@ class MainActivity : ComponentActivity() {
     private lateinit var guidanceText: TextView
     private lateinit var progressText: TextView
     private lateinit var startButton: Button
+    private lateinit var breatheButton: Button
+    private lateinit var checkButton: Button
     private lateinit var pulseText: TextView
     private lateinit var breathingText: TextView
+    private lateinit var hrvText: TextView
+    private lateinit var insightText: TextView
+    private lateinit var aiSwitch: Switch
 
     // Session state
+    private var mode = Mode.MEASURE
     private var phase = Phase.IDLE
     private var tickerJob: Job? = null
+    private var readinessJob: Job? = null
+    private var screenReleaseJob: Job? = null
     private var currentCode: String? = null
     private var currentHint: String? = null
     private var candidateCode: String? = null
@@ -96,6 +129,28 @@ class MainActivity : ComponentActivity() {
     private var gotFirstStatus = false
     private var pulse: Reading? = null
     private var breathing: Reading? = null
+    private var hrvMs: Double? = null
+
+    // Guided breathing state
+    private var exerciseMs = 0L
+    private var nextCueAtMs = 0L
+    private var breathsStarted = 0
+    private var inhaleNext = true
+    private var startPulse: Reading? = null
+    private var startBreathing: Reading? = null
+    private var feedbackGiven = false
+    private var notOkSince = 0L
+    private var lastPositionWarnAt = 0L
+
+    // AI explanation state
+    private var pendingInsightId: Int? = null
+    private var explainStartedAt = 0L
+    private var aiReply: String? = null
+    private var resultsSummary: String = ""
+
+    // What to do once the camera permission is granted.
+    private var pendingMode: Mode? = null
+    private var pendingCheckOnly = false
 
     // "Talking" detection is a nice extra. If the API key is not allowed to use it,
     // the session is restarted once without it.
@@ -105,7 +160,13 @@ class MainActivity : ComponentActivity() {
     private val cameraPermissionLauncher = registerForActivityResult(
         ActivityResultContracts.RequestPermission(),
     ) { granted ->
-        if (granted) beginSession() else showMessage(getString(R.string.camera_denied), speak = true)
+        if (!granted) {
+            showMessage(getString(R.string.camera_denied), speak = true)
+        } else if (pendingCheckOnly) {
+            runReadinessCheck(thenStart = null)
+        } else {
+            pendingMode?.let { proceedAfterPermission(it) }
+        }
     }
 
     // ---------------------------------------------------------------- lifecycle
@@ -126,7 +187,11 @@ class MainActivity : ComponentActivity() {
         lastMessage = getString(R.string.idle_hint)
         guidanceText.text = lastMessage
 
-        if (!prefs.getBoolean(KEY_CONSENT, false)) showConsentDialog(firstRun = true)
+        if (!prefs.getBoolean(KEY_CONSENT, false)) {
+            showConsentDialog(firstRun = true)
+            // TalkBack reads the dialog itself; without a screen reader, say the key points aloud.
+            if (!announcer.isScreenReaderOn()) announcer.say(getString(R.string.first_run_spoken), guidanceText)
+        }
     }
 
     override fun onPause() {
@@ -147,7 +212,7 @@ class MainActivity : ComponentActivity() {
         // res/xml/presage_services.xml (no key in the app at all). OAuth is used when no key is set.
         if (BuildConfig.PRESAGE_API_KEY.isNotBlank()) sdk.config.apiKey = BuildConfig.PRESAGE_API_KEY
         sdk.config.imageOutputEnabled = false
-        // Anonymous SDK usage statistics are opt-out; Ultra Talking Pulse opts out.
+        // Anonymous SDK usage statistics and readiness reports are opt-out; Ultra Talking Pulse opts out.
         sdk.config.enableTelemetry = false
         runCatching { sdk.useCamera(CameraSelection.Front) }
         applyRequestedMetrics()
@@ -166,56 +231,130 @@ class MainActivity : ComponentActivity() {
         }
 
         sdk.error.observe(this) { error ->
-            if (error == null || phase == Phase.IDLE) return@observe
+            if (error != null) log("SDK error: ${error.code.name} retryable=${error.retryable} phase=$phase: ${error.message}")
+            if (error == null || !isSessionPhase()) return@observe
             onSessionFailure(error.code.name, error.message)
         }
 
         sdk.metrics.observe(this) { metrics ->
-            if (metrics == null || phase == Phase.IDLE) return@observe
+            if (metrics == null || !isSessionPhase()) return@observe
 
             if (metrics.hasCardio()) {
                 metrics.cardio.pulseRateList.lastOrNull { it.timestamp > 0 }?.let {
+                    if (pulse == null) log("first pulse: ${it.value} conf=${it.confidence} phase=$phase")
                     pulse = Reading(it.value.toDouble(), it.confidence)
+                }
+                metrics.cardio.hrvList.lastOrNull { it.rmssd > 0.0 && it.confidence > 0f }?.let {
+                    if (hrvMs == null) log("first HRV: rmssd=${it.rmssd} conf=${it.confidence} stable=${it.stable}")
+                    hrvMs = it.rmssd
                 }
             }
             if (metrics.hasBreathing()) {
                 metrics.breathing.rateList.lastOrNull { it.timestamp > 0 }?.let {
+                    if (breathing == null) log("first breathing: ${it.value} conf=${it.confidence} phase=$phase")
                     breathing = Reading(it.value.toDouble(), it.confidence)
                 }
+            }
+            if (phase == Phase.EXERCISING) {
+                if (startPulse == null) startPulse = pulse
+                if (startBreathing == null) startBreathing = breathing
             }
             if (talkingRequested && phase == Phase.MEASURING && metrics.hasFace()) {
                 if (metrics.face.talkingList.lastOrNull()?.detected == true) warnAboutTalking()
             }
         }
+
+        // AI explanation replies. Automatic "vitals check-in" insights also arrive here;
+        // only the reply to our own request (matching request ID) is used.
+        sdk.insight.observe(this) { insight ->
+            if (insight != null) {
+                log("insight received: requestId=${insight.requestId} waitingFor=$pendingInsightId phase=$phase " +
+                    "hasAnalysis=${insight.hasAnalysis()}: ${insight.toString().replace('\n', ' ').take(600)}")
+            }
+            if (insight == null || phase != Phase.EXPLAINING) return@observe
+            val id = pendingInsightId ?: return@observe
+            if (insight.requestId != id) return@observe
+            aiReply = if (insight.hasAnalysis()) cleanForSpeech(insight.analysis) else ""
+        }
     }
 
-    // ---------------------------------------------------------------- session flow
+    /** Diagnostic log (debug builds only). Read it with: adb logcat -d -s UTP */
+    private fun log(message: String) {
+        // Warning level: some phones (Honor, Huawei) hide info-level logs from apps.
+        if (BuildConfig.DEBUG) android.util.Log.w("UTP", message)
+    }
 
-    private fun onStartStopPressed() {
+    private fun isSessionPhase() =
+        phase == Phase.POSITIONING || phase == Phase.MEASURING ||
+            phase == Phase.EXERCISING || phase == Phase.EXPLAINING
+
+    // ---------------------------------------------------------------- starting
+
+    private fun onModeButtonPressed(requested: Mode) {
+        if (phase == Phase.CHECKING) {
+            cancelReadinessCheck()
+            return
+        }
         if (phase != Phase.IDLE) {
-            endSession(getString(R.string.stopped))
+            endSession(getString(if (mode == Mode.BREATHE) R.string.exercise_stopped else R.string.stopped))
             return
         }
-        if (!prefs.getBoolean(KEY_CONSENT, false)) {
-            showMessage(getString(R.string.consent_needed), speak = true)
-            showConsentDialog(firstRun = true)
-            return
-        }
-        if (BuildConfig.PRESAGE_API_KEY.isBlank() && !hasOAuthConfig()) {
-            showMessage(getString(R.string.no_api_key), speak = true)
-            return
-        }
-        if (!isOnline()) {
-            showMessage(getString(R.string.err_offline), speak = true)
-            return
-        }
-        if (ContextCompat.checkSelfPermission(this, Manifest.permission.CAMERA)
-            != PackageManager.PERMISSION_GRANTED
-        ) {
+        if (!preflightOk()) return
+        pendingMode = requested
+        pendingCheckOnly = false
+        if (!hasCameraPermission()) {
             cameraPermissionLauncher.launch(Manifest.permission.CAMERA)
             return
         }
-        beginSession()
+        proceedAfterPermission(requested)
+    }
+
+    private fun onCheckButtonPressed() {
+        if (phase == Phase.CHECKING) {
+            cancelReadinessCheck()
+            return
+        }
+        if (phase != Phase.IDLE) return
+        if (!preflightOk()) return
+        pendingMode = null
+        pendingCheckOnly = true
+        if (!hasCameraPermission()) {
+            cameraPermissionLauncher.launch(Manifest.permission.CAMERA)
+            return
+        }
+        runReadinessCheck(thenStart = null)
+    }
+
+    /** Consent, credentials and internet: everything that must be true before the camera starts. */
+    private fun preflightOk(): Boolean {
+        if (!prefs.getBoolean(KEY_CONSENT, false)) {
+            showMessage(getString(R.string.consent_needed), speak = true)
+            showConsentDialog(firstRun = true)
+            return false
+        }
+        if (BuildConfig.PRESAGE_API_KEY.isBlank() && !hasOAuthConfig()) {
+            showMessage(getString(R.string.no_api_key), speak = true)
+            return false
+        }
+        if (!isOnline()) {
+            showMessage(getString(R.string.err_offline), speak = true)
+            return false
+        }
+        return true
+    }
+
+    private fun hasCameraPermission() =
+        ContextCompat.checkSelfPermission(this, Manifest.permission.CAMERA) == PackageManager.PERMISSION_GRANTED
+
+    /** Runs the phone check once per SDK version; after that, sessions start directly. */
+    private fun proceedAfterPermission(requested: Mode) {
+        val checkedFor = prefs.getString(KEY_READINESS_SDK, null)
+        val verdict = prefs.getString(KEY_READINESS, null)
+        if (checkedFor == sdk.version && (verdict == "READY" || verdict == "LIMITED")) {
+            beginSession(requested)
+        } else {
+            runReadinessCheck(thenStart = requested)
+        }
     }
 
     /** True when the phone has a working internet connection (Wi-Fi or mobile data). */
@@ -230,7 +369,112 @@ class MainActivity : ComponentActivity() {
     private fun hasOAuthConfig(): Boolean =
         resources.getIdentifier("presage_services", "xml", packageName) != 0
 
-    private fun beginSession() {
+    // ---------------------------------------------------------------- phone check (Device Readiness)
+
+    private fun runReadinessCheck(thenStart: Mode?) {
+        phase = Phase.CHECKING
+        setButtonsForChecking()
+        window.addFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON)
+        showMessage(getString(R.string.readiness_checking), speak = true)
+
+        readinessJob = lifecycleScope.launch {
+            var outcome = runCatching { sdk.checkDeviceReadiness() }
+            // Right after the app starts, the SDK may still be signing in to Presage. Give it a moment.
+            var attempts = 1
+            while (attempts < READINESS_ATTEMPTS && outcome.getOrNull()?.let { isAuthNotReady(it.verdict.name, it.reason) } == true) {
+                delay(READINESS_RETRY_MS)
+                attempts++
+                outcome = runCatching { sdk.checkDeviceReadiness() }
+            }
+            if (outcome.exceptionOrNull() is CancellationException) return@launch
+            phase = Phase.IDLE
+            readinessJob = null
+            restoreIdleButtons()
+            releaseScreenAfterSpeech(extraDelay = true)
+
+            val result = outcome.getOrNull()
+            if (result == null) {
+                val e = outcome.exceptionOrNull()
+                val text = getString(R.string.readiness_error, e?.message ?: e.toString())
+                if (thenStart != null) offerToTryAnyway(text, thenStart) else showMessage(text, speak = true)
+                return@launch
+            }
+            val reason = result.reason
+            log("readiness: verdict=${result.verdict.name} attempts=$attempts reason=$reason")
+            when (result.verdict.name) {
+                "READY" -> {
+                    saveReadiness("READY")
+                    if (thenStart != null) {
+                        beginSession(thenStart, prefix = getString(R.string.readiness_ready_short))
+                    } else {
+                        showMessage(getString(R.string.readiness_ready), speak = true)
+                    }
+                }
+                "LIMITED" -> {
+                    saveReadiness("LIMITED")
+                    val text = getString(R.string.readiness_limited, reason)
+                    if (thenStart != null) offerToTryAnyway(text, thenStart) else showMessage(text, speak = true)
+                }
+                "BLOCKED" -> {
+                    val authNotReady = isAuthNotReady("BLOCKED", reason)
+                    if (!authNotReady && talkingRequested) {
+                        // The optional "talking" metric may not be allowed for this account: check again without it.
+                        talkingRequested = false
+                        applyRequestedMetrics()
+                        runReadinessCheck(thenStart)
+                    } else {
+                        // Starting a measurement signs in to Presage by itself, so the user can still try.
+                        val text = getString(
+                            if (authNotReady) R.string.readiness_auth else R.string.readiness_blocked,
+                            reason,
+                        )
+                        if (thenStart != null) offerToTryAnyway(text, thenStart) else showMessage(text, speak = true)
+                    }
+                }
+                else -> {
+                    val text = getString(R.string.readiness_inconclusive, reason)
+                    if (thenStart != null) offerToTryAnyway(text, thenStart) else showMessage(text, speak = true)
+                }
+            }
+        }
+    }
+
+    /** "Authentication is not ready": the SDK hasn't finished signing in yet, which is not a phone problem. */
+    private fun isAuthNotReady(verdict: String, reason: String): Boolean =
+        verdict == "BLOCKED" && reason.contains("authentic", ignoreCase = true)
+
+    private fun cancelReadinessCheck() {
+        readinessJob?.cancel()
+        readinessJob = null
+        phase = Phase.IDLE
+        restoreIdleButtons()
+        window.clearFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON)
+        lifecycleScope.launch { runCatching { sdk.stop() } }
+        showMessage(getString(R.string.readiness_cancelled), speak = true)
+    }
+
+    private fun saveReadiness(verdict: String) {
+        prefs.edit()
+            .putString(KEY_READINESS, verdict)
+            .putString(KEY_READINESS_SDK, sdk.version)
+            .apply()
+    }
+
+    private fun offerToTryAnyway(text: String, requested: Mode) {
+        showMessage(text + " " + getString(R.string.readiness_try_question), speak = true)
+        AlertDialog.Builder(this)
+            .setTitle(R.string.readiness_title)
+            .setMessage(text + "\n\n" + getString(R.string.readiness_try_question))
+            .setPositiveButton(R.string.btn_try_anyway) { _, _ -> beginSession(requested) }
+            .setNegativeButton(R.string.btn_cancel, null)
+            .show()
+    }
+
+    // ---------------------------------------------------------------- session flow
+
+    private fun beginSession(requested: Mode, prefix: String? = null) {
+        log("session start: mode=$requested aiOn=${prefs.getBoolean(KEY_AI, false)} talking=$talkingRequested sdk=${sdk.version}")
+        mode = requested
         phase = Phase.POSITIONING
         currentCode = null
         currentHint = null
@@ -242,15 +486,33 @@ class MainActivity : ComponentActivity() {
         lastTalkWarningAt = 0L
         pulse = null
         breathing = null
+        hrvMs = null
+        exerciseMs = 0L
+        nextCueAtMs = 0L
+        breathsStarted = 0
+        inhaleNext = true
+        startPulse = null
+        startBreathing = null
+        feedbackGiven = false
+        notOkSince = 0L
+        lastPositionWarnAt = 0L
+        pendingInsightId = null
+        aiReply = null
+        resultsSummary = ""
+
         pulseText.text = getString(R.string.no_results_yet)
-        breathingText.text = ""
-        breathingText.visibility = View.GONE
+        listOf(breathingText, hrvText, insightText).forEach {
+            it.text = ""
+            it.visibility = View.GONE
+        }
         progressText.text = getString(R.string.progress_positioning)
-        startButton.text = getString(R.string.btn_stop)
-        // Keep the screen on for the whole measurement, so the phone doesn't lock mid-way.
+        setButtonsForSession()
+        // Keep the screen on for the whole session, so the phone doesn't lock mid-way.
+        screenReleaseJob?.cancel()
         window.addFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON)
 
-        showMessage(getString(R.string.intro), speak = true)
+        val intro = getString(if (mode == Mode.BREATHE) R.string.breathe_intro else R.string.intro)
+        showMessage(if (prefix != null) "$prefix $intro" else intro, speak = true)
         sessionStartedAt = SystemClock.elapsedRealtime()
         gotFirstStatus = false
         startSdk()
@@ -263,10 +525,11 @@ class MainActivity : ComponentActivity() {
                 .onSuccess { retryInFlight = false }
                 .onFailure { e ->
                     retryInFlight = false
-                    if (phase == Phase.IDLE) return@onFailure
+                    if (!isSessionPhase()) return@onFailure
                     val known = listOf(
                         "AUTHENTICATION_FAILED", "CREDIT_EXHAUSTED", "NETWORK_ERROR",
                         "SERVER_ERROR", "INPUT_UNAVAILABLE", "CONFIGURATION_FAILED",
+                        "SUSTAINED_LOW_FRAME_RATE", "METRIC_NOT_AUTHORIZED",
                     ).firstOrNull { e.toString().contains(it) }
                     onSessionFailure(known ?: "UNKNOWN", e.message ?: e.toString())
                 }
@@ -274,8 +537,14 @@ class MainActivity : ComponentActivity() {
     }
 
     private fun onSessionFailure(code: String, message: String) {
-        if (phase == Phase.IDLE) return
+        if (!isSessionPhase()) return
         if (retryInFlight) return
+
+        // The results are already out; a failure while waiting for the AI only loses the explanation.
+        if (phase == Phase.EXPLAINING) {
+            endSession(getString(R.string.ai_failed))
+            return
+        }
 
         // Without internet the SDK can't authenticate; say that plainly instead of a sign-in error.
         if (!isOnline()) {
@@ -284,7 +553,9 @@ class MainActivity : ComponentActivity() {
         }
 
         // First failure while asking for the optional "talking" metric: try again without it.
-        if (talkingRequested && (code == "CONFIGURATION_FAILED" || code == "AUTHENTICATION_FAILED")) {
+        val talkingMayBeTheCause = code == "CONFIGURATION_FAILED" ||
+            code == "AUTHENTICATION_FAILED" || code == "METRIC_NOT_AUTHORIZED"
+        if (talkingRequested && talkingMayBeTheCause) {
             talkingRequested = false
             retryInFlight = true
             sessionStartedAt = SystemClock.elapsedRealtime()
@@ -301,6 +572,7 @@ class MainActivity : ComponentActivity() {
             "CREDIT_EXHAUSTED" -> getString(R.string.err_credits)
             "NETWORK_ERROR", "SERVER_ERROR" -> getString(R.string.err_network)
             "INPUT_UNAVAILABLE" -> getString(R.string.err_camera)
+            "SUSTAINED_LOW_FRAME_RATE" -> getString(R.string.err_low_fps)
             else -> getString(R.string.err_generic, message)
         }
         endSession(text)
@@ -320,7 +592,7 @@ class MainActivity : ComponentActivity() {
         tickerJob?.cancel()
         lastTickAt = SystemClock.elapsedRealtime()
         tickerJob = lifecycleScope.launch {
-            while (isActive && phase != Phase.IDLE) {
+            while (isActive && isSessionPhase()) {
                 delay(TICK_MS)
                 tick()
             }
@@ -329,20 +601,23 @@ class MainActivity : ComponentActivity() {
 
     /** Runs five times a second while a session is active. */
     private fun tick() {
+        if (!isSessionPhase()) return
         val now = SystemClock.elapsedRealtime()
         val elapsed = now - lastTickAt
         lastTickAt = now
 
         // Watchdog: never wait forever if the SDK doesn't start on this phone.
         if (!gotFirstStatus && !retryInFlight && now - sessionStartedAt > START_TIMEOUT_MS) {
-            android.util.Log.w("UltraTalkingPulse", "No status from SmartSpectra within ${START_TIMEOUT_MS} ms")
+            android.util.Log.w("UltraTalkingPulse", "No status from SmartSpectra within $START_TIMEOUT_MS ms")
             endSession(getString(if (isOnline()) R.string.err_start_timeout else R.string.err_offline))
             return
         }
 
         // Speak a position change only once it has settled, and never over another message.
+        // During the breathing exercise the rhythm has priority; position problems are handled there.
         val code = candidateCode
-        if (code != null &&
+        if ((phase == Phase.POSITIONING || phase == Phase.MEASURING) &&
+            code != null &&
             code != lastSpokenCode &&
             now - candidateSince >= SETTLE_MS &&
             now >= announcer.busyUntil + GAP_MS
@@ -354,7 +629,9 @@ class MainActivity : ComponentActivity() {
             Phase.POSITIONING -> {
                 if (currentCode == OK) {
                     if (okSince == 0L) okSince = now
-                    if (now - okSince >= OK_HOLD_MS && now >= announcer.busyUntil) startMeasuring()
+                    if (now - okSince >= OK_HOLD_MS && now >= announcer.busyUntil) {
+                        if (mode == Mode.BREATHE) startExercise() else startMeasuring()
+                    }
                 } else {
                     okSince = 0L
                 }
@@ -375,7 +652,11 @@ class MainActivity : ComponentActivity() {
                 if (measuredMs >= MEASURE_MS) finishMeasurement()
             }
 
-            Phase.IDLE -> Unit
+            Phase.EXERCISING -> exerciseTick(now, elapsed)
+
+            Phase.EXPLAINING -> explainingTick(now)
+
+            Phase.IDLE, Phase.CHECKING -> Unit
         }
     }
 
@@ -413,6 +694,8 @@ class MainActivity : ComponentActivity() {
         return getString(id)
     }
 
+    // ---------------------------------------------------------------- measurement
+
     private fun startMeasuring() {
         phase = Phase.MEASURING
         measuredMs = 0L
@@ -435,21 +718,109 @@ class MainActivity : ComponentActivity() {
         val breathingLine = breathing?.let {
             getString(R.string.r_breathing, it.value.roundToInt(), confidenceWord(it.confidence))
         } ?: getString(R.string.r_breathing_none)
+        val hrvLine = hrvMs?.let { getString(R.string.r_hrv, it.roundToInt()) }
+            ?: getString(R.string.r_hrv_none)
 
         pulseText.text = pulseLine
-        breathingText.text = breathingLine
-        breathingText.visibility = View.VISIBLE
+        showResult(breathingText, breathingLine)
+        showResult(hrvText, hrvLine)
 
         val weak = pulse == null || breathing == null ||
             (pulse?.confidence ?: 0f) < 40f || (breathing?.confidence ?: 0f) < 40f
-        val summary = buildString {
+        resultsSummary = buildString {
             append(getString(R.string.r_done)).append(' ')
-            append(pulseLine).append(' ').append(breathingLine)
+            append(pulseLine).append(' ').append(breathingLine).append(' ').append(hrvLine)
             if (weak) append(' ').append(getString(R.string.r_retry_tip))
         }
         announcer.cueDone(guidanceText)
-        endSession(summary)
+
+        // The AI explanation needs the session to stay open, so the camera keeps running a little longer.
+        log("measurement done: pulse=$pulse breathing=$breathing hrv=$hrvMs")
+        val anyResult = pulse != null || breathing != null || hrvMs != null
+        finishWithOptionalAi(resultsSummary, if (anyResult) aiPrompt() else null)
     }
+
+    /**
+     * Speaks [summary] and ends the session, or, when the AI explanation is on and there is
+     * something to explain ([prompt] not null), asks for it first while the session is still open.
+     */
+    private fun finishWithOptionalAi(summary: String, prompt: String?) {
+        resultsSummary = summary
+        val aiOn = prefs.getBoolean(KEY_AI, false)
+        log("finish: aiOn=$aiOn hasPrompt=${prompt != null}")
+        if (!aiOn) {
+            endSession(summary)
+            return
+        }
+        if (prompt == null) {
+            endSession(summary + " " + getString(R.string.ai_skipped))
+            return
+        }
+        val request = runCatching { sdk.requestInsight(prompt) }
+        log("requestInsight -> id=${request.getOrNull()} error=${request.exceptionOrNull()} prompt=$prompt")
+        val id = request.getOrNull()
+        if (id == null) {
+            endSession(summary + " " + getString(R.string.ai_failed))
+            return
+        }
+        pendingInsightId = id
+        aiReply = null
+        explainStartedAt = SystemClock.elapsedRealtime()
+        phase = Phase.EXPLAINING
+        progressText.text = getString(R.string.ai_waiting)
+        showMessage(summary + " " + getString(R.string.ai_waiting), speak = true)
+    }
+
+    /** Waits for the AI reply; speaks it once the spoken results have finished. */
+    private fun explainingTick(now: Long) {
+        val reply = aiReply
+        if (reply != null) {
+            if (now < announcer.busyUntil + GAP_MS) return
+            log("AI reply ready, blank=${reply.isBlank()}")
+            if (reply.isBlank()) {
+                endSession(getString(R.string.ai_failed))
+            } else {
+                val text = getString(R.string.ai_prefix, reply)
+                showResult(insightText, text)
+                endSession(text)
+            }
+            return
+        }
+        if (now - explainStartedAt > INSIGHT_TIMEOUT_MS && now >= announcer.busyUntil) {
+            log("AI explanation timed out after ${INSIGHT_TIMEOUT_MS} ms (waiting for id=$pendingInsightId)")
+            endSession(getString(R.string.ai_timeout))
+        }
+    }
+
+    /** The question sent with the measured numbers. The SDK adds its own buffered vitals as well. */
+    private fun aiPrompt(): String {
+        val numbers = buildList {
+            pulse?.let { add("pulse rate about ${it.value.roundToInt()} beats per minute") }
+            breathing?.let { add("breathing rate about ${it.value.roundToInt()} breaths per minute") }
+            hrvMs?.let { add("heart rate variability RMSSD about ${it.roundToInt()} ms") }
+        }.joinToString("; ")
+        return getString(R.string.ai_prompt, numbers)
+    }
+
+    /** The question after the breathing exercise: start and end values, as far as they are known. */
+    private fun exercisePrompt(sp: Reading?, ep: Reading?, sb: Reading?, eb: Reading?): String? {
+        val numbers = buildList {
+            if (sb != null && eb != null) {
+                add("breathing rate about ${sb.value.roundToInt()} breaths per minute at the start and about ${eb.value.roundToInt()} at the end")
+            }
+            if (sp != null && ep != null) {
+                add("pulse rate about ${sp.value.roundToInt()} beats per minute at the start and about ${ep.value.roundToInt()} at the end")
+            }
+        }
+        if (numbers.isEmpty()) return null
+        return getString(R.string.ai_prompt_exercise, numbers.joinToString("; "))
+    }
+
+    /** Language models like Markdown; a screen reader should hear plain sentences. */
+    private fun cleanForSpeech(text: String): String =
+        text.replace(Regex("[*#_`>]"), "")
+            .replace(Regex("\\s+"), " ")
+            .trim()
 
     private fun confidenceWord(confidence: Float): String = getString(
         when {
@@ -459,17 +830,159 @@ class MainActivity : ComponentActivity() {
         },
     )
 
+    // ---------------------------------------------------------------- guided breathing
+
+    private fun startExercise() {
+        phase = Phase.EXERCISING
+        exerciseMs = 0L
+        breathsStarted = 0
+        inhaleNext = true
+        feedbackGiven = false
+        startPulse = null
+        startBreathing = null
+        notOkSince = 0L
+        lastPositionWarnAt = SystemClock.elapsedRealtime()
+        showMessage(getString(R.string.exercise_start), speak = true)
+        // The first "in" comes right after the explanation has been spoken.
+        nextCueAtMs = (announcer.busyUntil - SystemClock.elapsedRealtime() + GAP_MS).coerceAtLeast(0L)
+    }
+
+    private fun exerciseTick(now: Long, elapsed: Long) {
+        exerciseMs += elapsed
+
+        // Keep track of how long the position has been lost, to mention it between breaths.
+        if (currentCode != OK) {
+            if (notOkSince == 0L) notOkSince = now
+        } else {
+            notOkSince = 0L
+        }
+
+        progressText.text = getString(
+            R.string.progress_exercise,
+            breathsStarted.coerceIn(1, EXERCISE_BREATHS),
+            EXERCISE_BREATHS,
+        )
+
+        if (exerciseMs < nextCueAtMs) return
+
+        if (inhaleNext) {
+            if (breathsStarted >= EXERCISE_BREATHS) {
+                finishExercise()
+                return
+            }
+            breathsStarted++
+            announcer.cueInhale(guidanceText)
+            showMessage(getString(R.string.inhale), speak = true)
+            nextCueAtMs += INHALE_MS
+        } else {
+            announcer.cueExhale(guidanceText)
+            showMessage(exhaleMessage(now), speak = true)
+            nextCueAtMs += EXHALE_MS
+        }
+        inhaleNext = !inhaleNext
+    }
+
+    /** "Out", sometimes followed by the live breathing rate or a position reminder (the out-breath is longer). */
+    private fun exhaleMessage(now: Long): String {
+        val out = getString(R.string.exhale)
+        val rate = breathing
+        if (!feedbackGiven && exerciseMs >= EXERCISE_FEEDBACK_AT_MS && rate != null) {
+            feedbackGiven = true
+            return out + " " + getString(R.string.exercise_feedback, rate.value.roundToInt())
+        }
+        val code = currentCode
+        if (code != null && code != OK && notOkSince != 0L &&
+            now - notOkSince >= LOST_POSITION_MS &&
+            now - lastPositionWarnAt >= LOST_POSITION_REPEAT_MS
+        ) {
+            val hint = guidanceFor(code) ?: return out
+            lastPositionWarnAt = now
+            return "$out $hint"
+        }
+        return out
+    }
+
+    private fun finishExercise() {
+        val endPulse = pulse
+        val endBreathing = breathing
+        val sp = startPulse
+        val sb = startBreathing
+
+        val breathingLine = if (sb != null && endBreathing != null) {
+            getString(R.string.x_breathing, sb.value.roundToInt(), endBreathing.value.roundToInt())
+        } else {
+            getString(R.string.x_breathing_none)
+        }
+        val pulseLine = if (sp != null && endPulse != null) {
+            getString(R.string.x_pulse, sp.value.roundToInt(), endPulse.value.roundToInt())
+        } else {
+            getString(R.string.x_pulse_none)
+        }
+        pulseText.text = pulseLine
+        showResult(breathingText, breathingLine)
+
+        announcer.cueDone(guidanceText)
+        log("exercise done: pulse $sp -> $endPulse, breathing $sb -> $endBreathing")
+        finishWithOptionalAi(
+            getString(R.string.exercise_done) + " " + breathingLine + " " + pulseLine,
+            exercisePrompt(sp, endPulse, sb, endBreathing),
+        )
+    }
+
+    // ---------------------------------------------------------------- ending
+
     /** Stops the camera and returns to the idle state; [message] is spoken if given. */
     private fun endSession(message: String?) {
+        log("session end: phase=$phase mode=$mode message=${message?.take(120)}")
+        if (phase == Phase.CHECKING) {
+            readinessJob?.cancel()
+            readinessJob = null
+        }
         phase = Phase.IDLE
         retryInFlight = false
+        pendingInsightId = null
         tickerJob?.cancel()
         tickerJob = null
-        startButton.text = getString(R.string.btn_start)
+        restoreIdleButtons()
         progressText.text = ""
-        window.clearFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON)
         lifecycleScope.launch { runCatching { sdk.stop() } }
-        if (message != null) showMessage(message, speak = true)
+        if (message != null) {
+            showMessage(message, speak = true)
+            releaseScreenAfterSpeech()
+        } else {
+            screenReleaseJob?.cancel()
+            window.clearFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON)
+        }
+    }
+
+    // ---------------------------------------------------------------- buttons
+
+    private fun setButtonsForSession() {
+        if (mode == Mode.BREATHE) {
+            breatheButton.text = getString(R.string.btn_breathe_stop)
+            startButton.isEnabled = false
+        } else {
+            startButton.text = getString(R.string.btn_stop)
+            breatheButton.isEnabled = false
+        }
+        checkButton.isEnabled = false
+    }
+
+    private fun setButtonsForChecking() {
+        // While checking, the start buttons are off; the check button cancels the check.
+        checkButton.text = getString(R.string.btn_check_cancel)
+        startButton.isEnabled = false
+        breatheButton.isEnabled = false
+        checkButton.isEnabled = true
+    }
+
+    private fun restoreIdleButtons() {
+        startButton.text = getString(R.string.btn_start)
+        breatheButton.text = getString(R.string.btn_breathe)
+        checkButton.text = getString(R.string.btn_check_phone)
+        startButton.isEnabled = true
+        breatheButton.isEnabled = true
+        checkButton.isEnabled = true
     }
 
     // ---------------------------------------------------------------- messages
@@ -480,9 +993,31 @@ class MainActivity : ComponentActivity() {
         if (speak) announcer.say(text, guidanceText)
     }
 
+    private fun showResult(view: TextView, text: String) {
+        view.text = text
+        view.visibility = View.VISIBLE
+    }
+
     private fun repeatLastMessage() {
-        val extra = if (phase == Phase.MEASURING) " " + progressText.text else ""
+        val extra = if (phase == Phase.MEASURING || phase == Phase.EXERCISING) " " + progressText.text else ""
         announcer.say(lastMessage + extra, guidanceText)
+        if (phase == Phase.IDLE) releaseScreenAfterSpeech()
+    }
+
+    /**
+     * Keeps the screen on while the last message (results, AI explanation) is being read,
+     * plus a margin for slower speech rates, then lets the phone lock normally again.
+     */
+    private fun releaseScreenAfterSpeech(extraDelay: Boolean = false) {
+        window.addFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON)
+        screenReleaseJob?.cancel()
+        screenReleaseJob = lifecycleScope.launch {
+            // When called before the message is spoken, give the speech a moment to start.
+            if (extraDelay) delay(SCREEN_RELEASE_MARGIN_MS)
+            while (SystemClock.elapsedRealtime() < announcer.busyUntil) delay(500)
+            delay(SCREEN_RELEASE_MARGIN_MS)
+            if (phase == Phase.IDLE) window.clearFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON)
+        }
     }
 
     // ---------------------------------------------------------------- dialogs
@@ -508,6 +1043,27 @@ class MainActivity : ComponentActivity() {
                 }
         }
         builder.show()
+    }
+
+    /** Turning the AI explanation on sends numbers off the phone, so it is confirmed first. */
+    private fun onAiSwitchChanged(on: Boolean) {
+        log("AI switch changed: on=$on (saved=${prefs.getBoolean(KEY_AI, false)})")
+        if (!on) {
+            prefs.edit().putBoolean(KEY_AI, false).apply()
+            return
+        }
+        if (prefs.getBoolean(KEY_AI, false)) return
+        AlertDialog.Builder(this)
+            .setTitle(R.string.ai_dialog_title)
+            .setMessage(R.string.ai_dialog_body)
+            .setCancelable(false)
+            .setPositiveButton(R.string.btn_enable) { _, _ ->
+                prefs.edit().putBoolean(KEY_AI, true).apply()
+            }
+            .setNegativeButton(R.string.btn_cancel) { _, _ ->
+                aiSwitch.isChecked = false
+            }
+            .show()
     }
 
     private fun showAboutDialog() {
@@ -542,7 +1098,9 @@ class MainActivity : ComponentActivity() {
         // Camera preview: useful for sighted users, hidden from screen readers.
         val preview = PreviewView(this).apply {
             contentDescription = getString(R.string.camera_preview)
-            importantForAccessibility = View.IMPORTANT_FOR_ACCESSIBILITY_NO
+            // Hide the preview and the camera surface inside it; otherwise some phones read it as "unlabeled".
+            importantForAccessibility = View.IMPORTANT_FOR_ACCESSIBILITY_NO_HIDE_DESCENDANTS
+            isFocusable = false
             setBackgroundColor(Color.BLACK)
             scaleType = PreviewView.ScaleType.FILL_CENTER
             implementationMode = PreviewView.ImplementationMode.COMPATIBLE
@@ -555,8 +1113,12 @@ class MainActivity : ComponentActivity() {
             },
         )
 
-        startButton = bigButton(getString(R.string.btn_start), primary = true) { onStartStopPressed() }
+        startButton = bigButton(getString(R.string.btn_start), primary = true) { onModeButtonPressed(Mode.MEASURE) }
         content.addView(startButton, topMargin(16))
+        breatheButton = bigButton(getString(R.string.btn_breathe), primary = false) {
+            onModeButtonPressed(Mode.BREATHE)
+        }
+        content.addView(breatheButton, topMargin(10))
 
         content.addView(heading(getString(R.string.heading_guidance), 20f), topMargin(20))
         guidanceText = body("", sizeSp = 20f).apply { setTypeface(typeface, Typeface.BOLD) }
@@ -573,6 +1135,10 @@ class MainActivity : ComponentActivity() {
         content.addView(pulseText, topMargin(6))
         breathingText = body("", sizeSp = 20f).apply { visibility = View.GONE }
         content.addView(breathingText, topMargin(6))
+        hrvText = body("", sizeSp = 20f).apply { visibility = View.GONE }
+        content.addView(hrvText, topMargin(6))
+        insightText = body("", sizeSp = 18f).apply { visibility = View.GONE }
+        content.addView(insightText, topMargin(10))
 
         content.addView(heading(getString(R.string.heading_settings), 20f), topMargin(20))
         content.addView(
@@ -589,9 +1155,15 @@ class MainActivity : ComponentActivity() {
             },
             topMargin(6),
         )
+        aiSwitch = settingSwitch(getString(R.string.setting_ai), prefs.getBoolean(KEY_AI, false)) { on ->
+            onAiSwitchChanged(on)
+        }
+        content.addView(aiSwitch, topMargin(6))
+        checkButton = bigButton(getString(R.string.btn_check_phone), primary = false) { onCheckButtonPressed() }
+        content.addView(checkButton, topMargin(16))
         content.addView(
             bigButton(getString(R.string.btn_privacy), primary = false) { showConsentDialog(firstRun = false) },
-            topMargin(16),
+            topMargin(10),
         )
         content.addView(
             bigButton(getString(R.string.btn_about), primary = false) { showAboutDialog() },

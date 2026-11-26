@@ -1,49 +1,64 @@
 # Ultra Talking Pulse
 
-**Pulse and breathing from your phone's camera, with spoken guidance that gets you into position.**
+**Pulse, breathing and heart rate variability from your phone's camera, with spoken guidance that gets you into position.**
 
-Ultra Talking Pulse is an Android app built on the [Presage SmartSpectra SDK](https://github.com/Presage-Security/SmartSpectra). It estimates your pulse rate and breathing rate from the front camera. Camera vitals only work when your face is centred, well lit and still. Most apps expect you to check that on the screen. Ultra Talking Pulse tells you instead: "too far, move closer", "too dark, turn on a light", "good, hold still". Anyone can set it up without looking at the screen, whether they're blind, have low vision, have the phone propped across the room, or simply aren't holding it.
+Ultra Talking Pulse is an Android app built on the [Presage SmartSpectra SDK](https://github.com/Presage-Security/SmartSpectra). It estimates your pulse rate, breathing rate and heart rate variability (HRV) from the front camera, and offers a two-minute guided breathing exercise. Camera vitals only work when your face is centred, well lit and still. Most apps expect you to check that on the screen. Ultra Talking Pulse tells you instead: "too far, move closer", "too dark, turn on a light", "good, hold still". Anyone can set it up without looking at the screen, whether they're blind, have low vision, have the phone propped across the room, or simply aren't holding it.
 
 Part of the Ultra family of accessible software. *Creative tools that start with the keyboard, not the mouse.*
 
-> **Not a medical device.** Ultra Talking Pulse is for general wellness and curiosity only. It must not be used for diagnosis, treatment or any medical decision.
+> **Not a medical device.** Ultra Talking Pulse is for general wellness and information only. It does not diagnose, treat or prevent any condition and must not be used for any medical decision. AI explanations are generated automatically and can be wrong. If you are worried about your health, talk to a doctor.
+
+## What's new in 1.1
+
+- **Heart rate variability (HRV).** The measurement now also reports HRV (RMSSD, in milliseconds). Because HRV needs about a minute of signal, a measurement now takes about 60 seconds instead of 40.
+- **Guided breathing (2 minutes).** In for 4 seconds with a high tone, out for 6 with a low tone, 12 breaths. Halfway through you hear your live breathing rate, and at the end you hear your breathing rate and pulse at the start and at the end of the exercise.
+- **AI explanation of results (optional, off by default).** After a measurement or a breathing exercise, the app can ask Presage's LLM Insights for a short plain-language explanation and read it aloud: for each value, the typical resting range for adults and whether your value is within, below or above it, and after the exercise, how your values changed. Only numbers are sent, never images. It always says that it is AI-generated and not medical advice.
+- **Phone check.** Before the first measurement, the app runs Presage's Device Readiness check and tells you plainly whether this phone can measure reliably, instead of just failing. You can run it again from **Check this phone** in the settings.
+- **Clearer disclaimers.** The "not a medical device" notice is in the consent screen, on the main screen and in About, and it is spoken aloud on first launch when no screen reader is running.
+- Presage SmartSpectra SDK updated to 3.5.0.
 
 ## How it works
 
 1. Prop the phone upright on a table, screen facing you, about an arm's length away.
-2. Press **Start measurement**.
-3. The app listens to the SDK's live validation status (face found, centred, distance, lighting, motion and so on) and speaks one short instruction at a time until your position is good. A tone and a vibration confirm when you get there.
-4. It measures for about 40 seconds, and the screen stays on for the whole measurement so the phone never locks mid-way. Only time spent in a good position counts, so if you move, the measurement pauses and you're told how to fix it.
-5. You hear the result, for example "Pulse: about 72 beats per minute, high confidence. Breathing: about 14 breaths per minute, medium confidence."
+2. Press **Start measurement** or **Guided breathing (2 minutes)**.
+3. The first time, the app checks whether the phone is suitable (a few seconds).
+4. The app listens to the SDK's live validation status (face found, centred, distance, lighting, motion and so on) and speaks one short instruction at a time until your position is good. A tone and a vibration confirm when you get there.
+5. **Measurement:** it measures for about 60 seconds, and the screen stays on so the phone never locks mid-way. Only time spent in a good position counts, so if you move, the measurement pauses and you're told how to fix it. You then hear the result, for example "Pulse: about 72 beats per minute, high confidence. Breathing: about 14 breaths per minute, medium confidence. Heart rate variability, HRV: about 45 milliseconds."
+6. **Guided breathing:** the rhythm keeps going even if you move; if your position stays lost for a while, a short hint is added to an out-breath (at most every 20 seconds), so the rhythm is never drowned out.
 
 ### Live signals used
 
 | Signal | How Ultra Talking Pulse uses it |
 | --- | --- |
 | Validation status (16 codes) | Turned into short spoken instructions, spoken only when the status changes and has settled |
-| Pulse rate + confidence | Final result, with a plain-language confidence word |
-| Breathing rate + confidence | Final result, with a plain-language confidence word |
+| Pulse rate + confidence | Measurement result, and start/end comparison in the breathing exercise |
+| Breathing rate + confidence | Measurement result, live feedback during the exercise, start/end comparison |
+| HRV (RMSSD) | Measurement result, once the SDK reports a value with confidence |
 | Talking detection | A gentle "please don't talk while measuring" (at most every 12 seconds) |
+| LLM Insights | Optional spoken explanation of the measured numbers |
+| Device Readiness | Phone check before the first measurement, and on request |
 
 ### Accessibility design
 
 - **Works with TalkBack.** When a screen reader is running, messages are sent through it, so they use your own voice and speed and never talk over TalkBack. Without a screen reader, the app speaks with Android's text-to-speech, so sighted users get the same guidance.
 - **Quiet by design.** A message is spoken only when the situation changes and has stayed that way for almost a second. No running countdown chatter. The progress line is on screen, and **Repeat last message** reads it on request.
+- **Tones you can follow without words.** In the breathing exercise, a high tone means in and a low tone means out, along with the spoken words.
 - **Not just for blind users.** The camera preview is visible for sighted users, but the app never relies on it.
 - Large buttons (at least 56 dp), real headings for quick navigation, high-contrast dark theme, portrait layout with no hidden gestures.
 - Speech and sounds/vibration can each be switched off.
+- **The screen stays on while you listen.** It stays on for the whole session and until the results and the AI explanation have been read out, so the phone doesn't lock in the middle of a sentence.
 - **About** and **How to support this project** are available from the main screen, in English and Serbian.
 - **Clear when offline.** Measurements need an internet connection (the SDK authenticates with Presage). The app checks for one before starting and says so plainly, instead of showing a confusing sign-in error.
-- **Never stuck.** If the SDK sends no status within 25 seconds of pressing Start (for example on a phone it doesn't support), the app says so and stops, instead of waiting forever.
-- **Bilingual:** English and Serbian (Latin script). The language follows the phone, or can be set per app in Android 13+. Serbian speech falls back to a Croatian or Bosnian voice if no Serbian voice is installed.
+- **Never stuck.** If the SDK sends no status within 25 seconds of pressing Start, the app says so and stops, instead of waiting forever. If the AI explanation doesn't arrive within 30 seconds, the app says so; the results are already complete.
+- **Bilingual:** English and Serbian (Latin script). The language follows the phone, or can be set per app in Android 13+. Serbian speech falls back to a Croatian or Bosnian voice if no Serbian voice is installed. The phone-check explanation comes from the SDK and is in English.
 
 ## Consent and data handling
 
-- **Camera consent.** On first launch, a privacy notice explains everything below, and the app can't be used until you accept it. After that, Android's own camera permission is requested the first time you press Start. The camera is on only while a measurement is running.
+- **Consent.** On first launch, a privacy notice explains everything below, and the app can't be used until you accept it. Version 1.1 shows the updated notice once more, because it now covers the optional AI explanation. Android's own camera permission is requested the first time you start. The camera is on only while a measurement, exercise or phone check is running.
 - **No storage.** Ultra Talking Pulse never records, saves or uploads video or images. Results are only shown on screen and are lost when the app closes. There is no history, no account and no analytics. Android backup is disabled for the app.
-- **Processing.** Frames are processed on the device by the Presage SmartSpectra SDK. The SDK connects to Presage's servers to authenticate the API key and track usage.
-- **SDK telemetry.** The SmartSpectra SDK can send an anonymous, aggregate per-session summary (no frames, no vitals values, no identifiers; see Presage's [Telemetry & Privacy](https://github.com/Presage-Security/SmartSpectra/blob/main/docs/telemetry-and-privacy.md)). **Ultra Talking Pulse turns it off** (`enableTelemetry = false`).
-- **No AI services.** The SDK's optional LLM insight feature is not used.
+- **Processing.** Frames are processed on the device by the Presage SmartSpectra SDK. The SDK connects to Presage's servers to authenticate and track usage.
+- **SDK telemetry.** The SmartSpectra SDK can send an anonymous per-session summary and a phone-check diagnostic report (no frames, no vitals values; see Presage's [Telemetry & Privacy](https://github.com/Presage-Security/SmartSpectra/blob/main/docs/telemetry-and-privacy.md)). **Ultra Talking Pulse turns it off** (`enableTelemetry = false`).
+- **AI explanation (opt-in).** Off by default. Turning it on asks for confirmation. When on, after a measurement or breathing exercise the measured numbers (pulse, breathing rate, HRV), never images, are sent to Presage, which passes them to a large language model. The prompt asks for plain information only: no diagnosis, no illness names, no medical advice. The reply is always introduced as "AI explanation, for information only, not medical advice".
 - **Measuring other people.** The notice asks you to measure only yourself or someone who has agreed to it. The front camera is used, so the person being measured is the one facing the screen.
 - **Withdrawing consent.** The **Privacy and consent** button shows the notice again and lets you withdraw consent, which closes the app until you accept again.
 
@@ -66,9 +81,11 @@ Requirements: JDK 17 or newer, the Android SDK (platform 36.1), and a physical A
    ```
    Or just build the APK with `gradlew assembleDebug`. You'll find it in `app\build\outputs\apk\debug\`.
 
+For a Google Play release, register the SHA-256 fingerprint of the **Play app signing** key with Presage as well, since Google re-signs the app with that key.
+
 ### Automatic builds on GitHub
 
-`.github/workflows/build.yml` builds the APK on every push to `main` (download it from the run's **Artifacts**). A tag that starts with `v` (for example `v1.0.0`) also publishes a GitHub release named after the tag, with `UltraTalkingPulse-v1.0.0-android.apk` attached.
+`.github/workflows/build.yml` builds the APK on every push to `main` (download it from the run's **Artifacts**). A tag that starts with `v` (for example `v1.1.0`) also publishes a GitHub release named after the tag, with `UltraTalkingPulse-v1.1.0-android.apk` attached.
 
 For the published APK to sign in to Presage, the workflow needs two repository secrets (**Settings > Secrets and variables > Actions**):
 
@@ -84,8 +101,12 @@ Every installed copy uses the Presage credits of the account the app is register
 ## Tech
 
 - Kotlin, a single activity, no XML layouts, no third-party UI libraries
-- `com.presagetech:smartspectra:3.4.0`, AndroidX CameraX `PreviewView`
+- `com.presagetech:smartspectra:3.5.0` (vitals, HRV, LLM Insights, Device Readiness), AndroidX CameraX `PreviewView`
 - Android Gradle Plugin 9.2.1 (built-in Kotlin), Gradle 9.4.1, minSdk 28, targetSdk 36
+
+## Thanks
+
+Thanks to [Presage Technologies](https://presagetech.com) for the SmartSpectra SDK and for supporting this free app with additional usage credits.
 
 ## Supporting the project
 

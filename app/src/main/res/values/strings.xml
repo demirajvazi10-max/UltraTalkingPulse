@@ -1,18 +1,25 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
     <string name="app_name">Ultra Talking Pulse</string>
-    <string name="tagline">Pulse and breathing from your camera, with spoken guidance.</string>
+    <string name="tagline">Pulse, breathing and heart rate variability from your camera, with spoken guidance.</string>
 
     <!-- Buttons -->
     <string name="btn_start">Start measurement</string>
     <string name="btn_stop">Stop measurement</string>
+    <string name="btn_breathe">Guided breathing (2 minutes)</string>
+    <string name="btn_breathe_stop">Stop breathing exercise</string>
     <string name="btn_repeat">Repeat last message</string>
+    <string name="btn_check_phone">Check this phone</string>
+    <string name="btn_check_cancel">Cancel phone check</string>
     <string name="btn_privacy">Privacy and consent</string>
     <string name="btn_about">About Ultra Talking Pulse</string>
     <string name="btn_agree">I agree</string>
     <string name="btn_exit">Exit</string>
     <string name="btn_close">Close</string>
     <string name="btn_withdraw">Withdraw consent and exit</string>
+    <string name="btn_try_anyway">Try anyway</string>
+    <string name="btn_cancel">Cancel</string>
+    <string name="btn_enable">Turn on</string>
 
     <!-- Headings and labels -->
     <string name="heading_guidance">Guidance</string>
@@ -20,11 +27,13 @@
     <string name="heading_settings">Settings</string>
     <string name="setting_speech">Spoken guidance</string>
     <string name="setting_cues">Sounds and vibration</string>
+    <string name="setting_ai">AI explanation of results (sends numbers, never images)</string>
     <string name="camera_preview">Camera preview</string>
-    <string name="disclaimer">Ultra Talking Pulse is for general wellness and curiosity only. It is not a medical device and must not be used for diagnosis, treatment or any medical decision.</string>
+    <string name="disclaimer">Ultra Talking Pulse is for general wellness and information only. It is not a medical device. It does not diagnose, treat or prevent any condition and must not be used for any medical decision. AI explanations are generated automatically and can be wrong. If you are worried about your health, talk to a doctor.</string>
+    <string name="first_run_spoken">Welcome to Ultra Talking Pulse. Before you start, please read the privacy notice on the screen. This app is for general wellness only. It is not a medical device and is not for diagnosis or treatment.</string>
 
     <!-- Session flow -->
-    <string name="idle_hint">Prop the phone upright on a table, screen facing you, about an arm\'s length away. Then press Start.</string>
+    <string name="idle_hint">Prop the phone upright on a table, screen facing you, about an arm\'s length away. Then press Start measurement or Guided breathing.</string>
     <string name="intro">Starting. Prop the phone upright on a table, screen facing you, about an arm\'s length away. I will guide you into position.</string>
     <string name="good">Good.</string>
     <string name="good_continue">Good, continuing.</string>
@@ -60,28 +69,69 @@
     <!-- Results -->
     <string name="r_pulse">Pulse: about %1$d beats per minute, %2$s confidence.</string>
     <string name="r_breathing">Breathing: about %1$d breaths per minute, %2$s confidence.</string>
+    <string name="r_hrv">Heart rate variability, HRV: about %1$d milliseconds.</string>
     <string name="r_pulse_none">Pulse: no reliable reading this time.</string>
     <string name="r_breathing_none">Breathing: no reliable reading this time.</string>
+    <string name="r_hrv_none">Heart rate variability: no reliable reading this time.</string>
     <string name="r_done">Done.</string>
     <string name="r_retry_tip">For a better reading, try brighter, even light and keep the phone completely still.</string>
     <string name="conf_high">high</string>
     <string name="conf_medium">medium</string>
     <string name="conf_low">low</string>
 
+    <!-- AI explanation (Presage LLM Insights) -->
+    <string name="ai_waiting">Now asking for an AI explanation. This takes a few seconds, so stay where you are.</string>
+    <string name="ai_prefix">AI explanation, for information only, not medical advice: %1$s</string>
+    <string name="ai_timeout">The AI explanation did not arrive in time. Your results above are complete.</string>
+    <string name="ai_failed">The AI explanation could not be fetched this time. Your results above are complete.</string>
+    <string name="ai_skipped">No AI explanation this time, because there were no results to explain.</string>
+    <string name="ai_dialog_title">Turn on the AI explanation?</string>
+    <string name="ai_dialog_body">After each measurement or breathing exercise, the app can ask an AI to explain your results in a few plain sentences, including whether each value is within, below or above the typical range for adults.\n\n• To do that, the measured numbers (pulse, breathing rate and heart rate variability) are sent to Presage, which passes them to a large language model. Video and images never leave the phone.\n• The explanation is written by an AI. It can be inaccurate or wrong.\n• It is general information only, never a diagnosis or medical advice.\n\nYou can turn this off again at any time.</string>
+    <string name="ai_prompt">My camera-based wellness readings, taken at rest, are: %1$s. In three to five short, plain sentences: for each reading, give the typical resting range for adults and say whether my value is within it, below it or above it. Then add one neutral sentence of general context. Do not diagnose, do not name any illness, and do not give medical advice or instructions. If a value is outside the typical range, only say that such values can vary for many ordinary reasons and may be worth mentioning to a doctor if it keeps happening. Write plain text with no lists, headings or Markdown. Answer in English.</string>
+    <string name="ai_prompt_exercise">I just did a two-minute guided breathing exercise: in for 4 seconds, out for 6, about 6 breaths a minute. My camera-based wellness readings were: %1$s. In three to five short, plain sentences: say how the values changed, give the typical resting range for adults for each and whether my values are within it, below it or above it, and briefly explain what a change like this usually means during slow, paced breathing. Do not diagnose, do not name any illness, and do not give medical advice or instructions. If a value is outside the typical range, only say that such values can vary for many ordinary reasons and may be worth mentioning to a doctor if it keeps happening. Write plain text with no lists, headings or Markdown. Answer in English.</string>
+
+    <!-- Phone check (SmartSpectra Device Readiness) -->
+    <string name="readiness_title">Phone check</string>
+    <string name="readiness_checking">Checking whether this phone can measure reliably. This takes a few seconds; leave the phone where it is.</string>
+    <string name="readiness_ready">This phone is ready for measuring.</string>
+    <string name="readiness_ready_short">The phone is ready.</string>
+    <string name="readiness_limited">This phone is slower than Presage recommends, so results may not be reliable. Presage says: %1$s</string>
+    <string name="readiness_blocked">Measuring can\'t start on this phone right now. Presage says: %1$s</string>
+    <string name="readiness_auth">The phone check could not finish because the app has not signed in to Presage yet. Measuring signs in by itself, so it may still work. Presage says: %1$s</string>
+    <string name="readiness_inconclusive">I couldn\'t finish checking this phone. Presage says: %1$s</string>
+    <string name="readiness_error">I couldn\'t check this phone: %1$s</string>
+    <string name="readiness_try_question">Do you want to try anyway?</string>
+    <string name="readiness_cancelled">Phone check cancelled.</string>
+
+    <!-- Guided breathing -->
+    <string name="breathe_intro">Starting the breathing exercise. Prop the phone upright on a table, screen facing you, about an arm\'s length away. I will guide you into position first.</string>
+    <string name="exercise_start">Good. Breathe in when you hear the high tone, and out with the low tone. In for 4 seconds, out for 6, for two minutes. Breathe gently and comfortably. If you feel dizzy or uncomfortable, just breathe normally or stop.</string>
+    <string name="inhale">In.</string>
+    <string name="exhale">Out.</string>
+    <string name="exercise_feedback">Your breathing is now about %1$d breaths per minute.</string>
+    <string name="progress_exercise">Breathing exercise: breath %1$d of %2$d.</string>
+    <string name="exercise_done">The breathing exercise is finished.</string>
+    <string name="exercise_stopped">Breathing exercise stopped.</string>
+    <string name="x_breathing">Breathing: about %1$d breaths per minute at the start, about %2$d at the end.</string>
+    <string name="x_breathing_none">Breathing: not enough data to compare this time.</string>
+    <string name="x_pulse">Pulse: about %1$d beats per minute at the start, about %2$d at the end.</string>
+    <string name="x_pulse_none">Pulse: not enough data to compare this time.</string>
+
     <!-- Errors -->
     <string name="err_offline">No internet connection. Ultra Talking Pulse needs the internet to start a measurement. Turn on Wi-Fi or mobile data and try again.</string>
-    <string name="err_start_timeout">The measurement could not start on this phone. The camera analysis did not respond. Please try again; if it keeps happening, this phone may not be supported.</string>
+    <string name="err_start_timeout">The measurement could not start on this phone. The camera analysis did not respond. Please try again; if it keeps happening, use Check this phone in the settings.</string>
     <string name="err_auth">Presage rejected this app\'s credentials. Check the API key or the OAuth registration, then rebuild.</string>
-    <string name="err_credits">The Presage free usage limit has been reached for this key.</string>
+    <string name="err_credits">The Presage usage limit has been reached for this app.</string>
     <string name="err_network">Could not reach the Presage service. Check your internet connection and try again.</string>
     <string name="err_camera">The camera is not available. Close other apps that use the camera and try again.</string>
+    <string name="err_low_fps">The phone couldn\'t process the camera picture fast enough, so the measurement stopped. More light and closing other apps may help.</string>
     <string name="err_generic">Something went wrong: %1$s</string>
 
     <!-- Consent -->
     <string name="consent_title">Before you start</string>
-    <string name="consent_body">Ultra Talking Pulse uses your front camera to estimate your pulse and breathing rate.\n\n• The camera is on only while a measurement is running, and only after you press Start.\n• Video is processed on this phone by the Presage SmartSpectra SDK. Ultra Talking Pulse never records, saves or uploads video or images.\n• Results are shown on screen only. They are not saved and disappear when you close the app.\n• The app connects to Presage\'s servers to verify its API key and count usage. The SDK\'s optional anonymous usage statistics are turned off.\n• Measure only yourself, or someone who has agreed to it.\n• This is not a medical device. Do not use it for diagnosis or treatment.\n\nYou can read this again or withdraw your consent at any time from the Privacy and consent button.</string>
+    <string name="consent_body">Ultra Talking Pulse uses your front camera to estimate your pulse, breathing rate and heart rate variability, and offers a guided breathing exercise.\n\n• This is not a medical device. It is for general wellness and information only. It does not diagnose, treat or prevent any condition. Do not use it for any medical decision; if you are worried about your health, talk to a doctor.\n• The camera is on only while a measurement or exercise is running, and only after you press a start button.\n• Video is processed on this phone by the Presage SmartSpectra SDK. Ultra Talking Pulse never records, saves or uploads video or images.\n• Results are shown on screen only. They are not saved and disappear when you close the app.\n• The app connects to Presage\'s servers to verify its credentials and count usage. The SDK\'s optional anonymous usage statistics are turned off.\n• AI explanation (off unless you turn it on): the measured numbers, never images, are sent to Presage and a language model to get a short explanation. It is written by an AI and can be wrong.\n• Measure only yourself, or someone who has agreed to it.\n\nYou can read this again or withdraw your consent at any time from the Privacy and consent button.</string>
 
     <!-- About -->
     <string name="about_title">About Ultra Talking Pulse</string>
-    <string name="about_body">Ultra Talking Pulse %1$s\n\nCreated by Demir Ajvazi.\nPart of the Ultra family of accessible software.\nGitHub: github.com/demirajvazi10-max\n\nVital signs are estimated with the Presage SmartSpectra SDK.\n\nLicensed under GPL-3.0.</string>
+    <string name="about_body">Ultra Talking Pulse %1$s\n\nCreated by Demir Ajvazi.\nPart of the Ultra family of accessible software.\nGitHub: github.com/demirajvazi10-max\n\nVital signs are estimated with the Presage SmartSpectra SDK. Thanks to Presage Technologies for supporting this free app.\n\nFor general wellness only. Not a medical device.\n\nLicensed under GPL-3.0.</string>
 </resources>

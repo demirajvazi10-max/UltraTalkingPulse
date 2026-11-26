@@ -16,3 +16,6 @@ captures/
 
 # Debug logs
 logcat*.txt
+
+# Diagnostic logs pulled from a test phone
+utp-log*.txt

@@ -1,18 +1,25 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
     <string name="app_name">Ultra Talking Pulse</string>
-    <string name="tagline">Puls i disanje preko kamere, uz glasovno vođenje.</string>
+    <string name="tagline">Puls, disanje i varijabilnost srčanog ritma preko kamere, uz glasovno vođenje.</string>
 
     <!-- Dugmad -->
     <string name="btn_start">Započni merenje</string>
     <string name="btn_stop">Zaustavi merenje</string>
+    <string name="btn_breathe">Vođeno disanje (2 minuta)</string>
+    <string name="btn_breathe_stop">Zaustavi vežbu disanja</string>
     <string name="btn_repeat">Ponovi poslednju poruku</string>
+    <string name="btn_check_phone">Proveri ovaj telefon</string>
+    <string name="btn_check_cancel">Prekini proveru telefona</string>
     <string name="btn_privacy">Privatnost i saglasnost</string>
     <string name="btn_about">O aplikaciji Ultra Talking Pulse</string>
     <string name="btn_agree">Slažem se</string>
     <string name="btn_exit">Izađi</string>
     <string name="btn_close">Zatvori</string>
     <string name="btn_withdraw">Povuci saglasnost i izađi</string>
+    <string name="btn_try_anyway">Pokušaj ipak</string>
+    <string name="btn_cancel">Otkaži</string>
+    <string name="btn_enable">Uključi</string>
 
     <!-- Naslovi i oznake -->
     <string name="heading_guidance">Uputstva</string>
@@ -20,11 +27,13 @@
     <string name="heading_settings">Podešavanja</string>
     <string name="setting_speech">Glasovna uputstva</string>
     <string name="setting_cues">Zvuci i vibracija</string>
+    <string name="setting_ai">AI objašnjenje rezultata (šalje brojeve, nikad sliku)</string>
     <string name="camera_preview">Prikaz kamere</string>
-    <string name="disclaimer">Ultra Talking Pulse služi samo za opšte blagostanje i radoznalost. Nije medicinski uređaj i ne sme se koristiti za dijagnozu, lečenje niti bilo kakvu medicinsku odluku.</string>
+    <string name="disclaimer">Ultra Talking Pulse služi samo za opšte blagostanje i informaciju. Nije medicinski uređaj. Ne postavlja dijagnozu, ne leči i ne sprečava nijedno stanje, i ne sme se koristiti ni za kakvu medicinsku odluku. AI objašnjenja nastaju automatski i mogu biti pogrešna. Ako brineš za svoje zdravlje, obrati se lekaru.</string>
+    <string name="first_run_spoken">Dobro došao u Ultra Talking Pulse. Pre nego što počneš, pročitaj obaveštenje o privatnosti na ekranu. Ova aplikacija služi samo za opšte blagostanje. Nije medicinski uređaj i ne služi za dijagnozu ni lečenje.</string>
 
     <!-- Tok merenja -->
-    <string name="idle_hint">Uspravi telefon na stolu, ekranom prema sebi, na otprilike dužinu ruke. Zatim pritisni Započni.</string>
+    <string name="idle_hint">Uspravi telefon na stolu, ekranom prema sebi, na otprilike dužinu ruke. Zatim pritisni Započni merenje ili Vođeno disanje.</string>
     <string name="intro">Počinjem. Uspravi telefon na stolu, ekranom prema sebi, na otprilike dužinu ruke. Navodiću te dok se ne namestiš.</string>
     <string name="good">Dobro.</string>
     <string name="good_continue">Dobro, nastavljam.</string>
@@ -60,28 +69,69 @@
     <!-- Rezultati -->
     <string name="r_pulse">Puls: oko %1$d otkucaja u minuti, pouzdanost %2$s.</string>
     <string name="r_breathing">Disanje: oko %1$d udisaja u minuti, pouzdanost %2$s.</string>
+    <string name="r_hrv">Varijabilnost srčanog ritma, HRV: oko %1$d milisekundi.</string>
     <string name="r_pulse_none">Puls: ovaj put nema pouzdanog očitavanja.</string>
     <string name="r_breathing_none">Disanje: ovaj put nema pouzdanog očitavanja.</string>
+    <string name="r_hrv_none">Varijabilnost srčanog ritma: ovaj put nema pouzdanog očitavanja.</string>
     <string name="r_done">Gotovo.</string>
     <string name="r_retry_tip">Za bolje očitavanje probaj sa jačim, ravnomernim svetlom i potpuno mirnim telefonom.</string>
     <string name="conf_high">visoka</string>
     <string name="conf_medium">srednja</string>
     <string name="conf_low">niska</string>
 
+    <!-- AI objašnjenje (Presage LLM Insights) -->
+    <string name="ai_waiting">Sada tražim AI objašnjenje. To traje nekoliko sekundi, ostani gde jesi.</string>
+    <string name="ai_prefix">AI objašnjenje, samo informativno, nije medicinski savet: %1$s</string>
+    <string name="ai_timeout">AI objašnjenje nije stiglo na vreme. Tvoji rezultati iznad su kompletni.</string>
+    <string name="ai_failed">AI objašnjenje ovaj put nije moglo da se dobije. Tvoji rezultati iznad su kompletni.</string>
+    <string name="ai_skipped">Ovaj put nema AI objašnjenja, jer nije bilo rezultata koje bi objasnio.</string>
+    <string name="ai_dialog_title">Uključiti AI objašnjenje?</string>
+    <string name="ai_dialog_body">Posle svakog merenja ili vežbe disanja aplikacija može da zamoli AI da ti u nekoliko jednostavnih rečenica objasni rezultate, uključujući da li je svaka vrednost u uobičajenom opsegu za odrasle, ispod ili iznad njega.\n\n• Za to se izmereni brojevi (puls, brzina disanja i varijabilnost srčanog ritma) šalju Presage servisu, koji ih prosleđuje jezičkom modelu. Video i slike nikad ne napuštaju telefon.\n• Objašnjenje piše AI. Može biti netačno ili pogrešno.\n• To je samo opšta informacija, nikada dijagnoza ni medicinski savet.\n\nOvo možeš da isključiš bilo kada.</string>
+    <string name="ai_prompt">My camera-based wellness readings, taken at rest, are: %1$s. In three to five short, plain sentences: for each reading, give the typical resting range for adults and say whether my value is within it, below it or above it. Then add one neutral sentence of general context. Do not diagnose, do not name any illness, and do not give medical advice or instructions. If a value is outside the typical range, only say that such values can vary for many ordinary reasons and may be worth mentioning to a doctor if it keeps happening. Write plain text with no lists, headings or Markdown. Answer in Serbian, using the Latin script, addressing the reader informally (ti).</string>
+    <string name="ai_prompt_exercise">I just did a two-minute guided breathing exercise: in for 4 seconds, out for 6, about 6 breaths a minute. My camera-based wellness readings were: %1$s. In three to five short, plain sentences: say how the values changed, give the typical resting range for adults for each and whether my values are within it, below it or above it, and briefly explain what a change like this usually means during slow, paced breathing. Do not diagnose, do not name any illness, and do not give medical advice or instructions. If a value is outside the typical range, only say that such values can vary for many ordinary reasons and may be worth mentioning to a doctor if it keeps happening. Write plain text with no lists, headings or Markdown. Answer in Serbian, using the Latin script, addressing the reader informally (ti).</string>
+
+    <!-- Provera telefona (SmartSpectra Device Readiness) -->
+    <string name="readiness_title">Provera telefona</string>
+    <string name="readiness_checking">Proveravam da li ovaj telefon može pouzdano da meri. To traje nekoliko sekundi, ostavi telefon gde jeste.</string>
+    <string name="readiness_ready">Ovaj telefon je spreman za merenje.</string>
+    <string name="readiness_ready_short">Telefon je spreman.</string>
+    <string name="readiness_limited">Ovaj telefon je sporiji nego što Presage preporučuje, pa rezultati možda neće biti pouzdani. Presage kaže, na engleskom: %1$s</string>
+    <string name="readiness_blocked">Merenje trenutno ne može da počne na ovom telefonu. Presage kaže, na engleskom: %1$s</string>
+    <string name="readiness_auth">Provera telefona nije mogla da se završi jer aplikacija još nije prijavljena kod Presagea. Merenje se samo prijavljuje, pa može ipak da radi. Presage kaže, na engleskom: %1$s</string>
+    <string name="readiness_inconclusive">Nisam uspeo da završim proveru telefona. Presage kaže, na engleskom: %1$s</string>
+    <string name="readiness_error">Nisam uspeo da proverim telefon: %1$s</string>
+    <string name="readiness_try_question">Da li ipak želiš da pokušaš?</string>
+    <string name="readiness_cancelled">Provera telefona je prekinuta.</string>
+
+    <!-- Vođeno disanje -->
+    <string name="breathe_intro">Počinje vežba disanja. Uspravi telefon na stolu, ekranom prema sebi, na otprilike dužinu ruke. Prvo ću te navesti dok se ne namestiš.</string>
+    <string name="exercise_start">Dobro. Udahni kad čuješ visok ton, a izdahni uz dubok ton. Udah traje 4 sekunde, izdah 6, ukupno dva minuta. Diši lagano i prijatno. Ako ti se zavrti u glavi ili ti nije prijatno, samo diši normalno ili prekini.</string>
+    <string name="inhale">Udahni.</string>
+    <string name="exhale">Izdahni.</string>
+    <string name="exercise_feedback">Disanje ti je sada oko %1$d udisaja u minuti.</string>
+    <string name="progress_exercise">Vežba disanja: udah %1$d od %2$d.</string>
+    <string name="exercise_done">Vežba disanja je gotova.</string>
+    <string name="exercise_stopped">Vežba disanja je zaustavljena.</string>
+    <string name="x_breathing">Disanje: oko %1$d udisaja u minuti na početku, oko %2$d na kraju.</string>
+    <string name="x_breathing_none">Disanje: ovaj put nema dovoljno podataka za poređenje.</string>
+    <string name="x_pulse">Puls: oko %1$d otkucaja u minuti na početku, oko %2$d na kraju.</string>
+    <string name="x_pulse_none">Puls: ovaj put nema dovoljno podataka za poređenje.</string>
+
     <!-- Greške -->
     <string name="err_offline">Nema internet veze. Ultra Talking Pulse treba internet da bi započeo merenje. Uključi Wi-Fi ili mobilne podatke i pokušaj ponovo.</string>
-    <string name="err_start_timeout">Merenje nije moglo da počne na ovom telefonu, jer analiza slike sa kamere nije odgovorila. Pokušaj ponovo. Ako se ponavlja, ovaj telefon možda nije podržan.</string>
+    <string name="err_start_timeout">Merenje nije moglo da počne na ovom telefonu, jer analiza slike sa kamere nije odgovorila. Pokušaj ponovo. Ako se ponavlja, u podešavanjima izaberi Proveri ovaj telefon.</string>
     <string name="err_auth">Presage je odbio pristupne podatke aplikacije. Proveri API ključ ili OAuth registraciju, pa ponovo napravi aplikaciju.</string>
-    <string name="err_credits">Za ovaj ključ je potrošen besplatni Presage limit.</string>
+    <string name="err_credits">Za ovu aplikaciju je potrošen Presage limit korišćenja.</string>
     <string name="err_network">Ne mogu da se povežem sa Presage servisom. Proveri internet vezu i pokušaj ponovo.</string>
     <string name="err_camera">Kamera nije dostupna. Zatvori druge aplikacije koje koriste kameru i pokušaj ponovo.</string>
+    <string name="err_low_fps">Telefon nije stizao dovoljno brzo da obrađuje sliku sa kamere, pa je merenje prekinuto. Više svetla i zatvaranje drugih aplikacija mogu da pomognu.</string>
     <string name="err_generic">Nešto nije u redu: %1$s</string>
 
     <!-- Saglasnost -->
     <string name="consent_title">Pre nego što počneš</string>
-    <string name="consent_body">Ultra Talking Pulse koristi prednju kameru da proceni tvoj puls i brzinu disanja.\n\n• Kamera je uključena samo dok merenje traje, i tek kada pritisneš Započni.\n• Video obrađuje Presage SmartSpectra SDK na samom telefonu. Ultra Talking Pulse nikada ne snima, ne čuva i ne šalje video ni slike.\n• Rezultati se samo prikazuju na ekranu. Ne čuvaju se i nestaju kada zatvoriš aplikaciju.\n• Aplikacija se povezuje sa Presage serverima da proveri API ključ i broji korišćenje. Opciona anonimna statistika korišćenja u SDK-u je isključena.\n• Meri samo sebe, ili nekoga ko se sa tim složio.\n• Ovo nije medicinski uređaj. Ne koristi ga za dijagnozu ni lečenje.\n\nOvo možeš ponovo pročitati ili povući saglasnost bilo kada, preko dugmeta Privatnost i saglasnost.</string>
+    <string name="consent_body">Ultra Talking Pulse koristi prednju kameru da proceni tvoj puls, brzinu disanja i varijabilnost srčanog ritma, i nudi vežbu vođenog disanja.\n\n• Ovo nije medicinski uređaj. Služi samo za opšte blagostanje i informaciju. Ne postavlja dijagnozu, ne leči i ne sprečava nijedno stanje. Ne koristi je ni za kakvu medicinsku odluku; ako brineš za svoje zdravlje, obrati se lekaru.\n• Kamera je uključena samo dok merenje ili vežba traju, i tek kada pritisneš dugme za početak.\n• Video obrađuje Presage SmartSpectra SDK na samom telefonu. Ultra Talking Pulse nikada ne snima, ne čuva i ne šalje video ni slike.\n• Rezultati se samo prikazuju na ekranu. Ne čuvaju se i nestaju kada zatvoriš aplikaciju.\n• Aplikacija se povezuje sa Presage serverima da proveri pristupne podatke i broji korišćenje. Opciona anonimna statistika korišćenja u SDK-u je isključena.\n• AI objašnjenje (isključeno dok ga sam ne uključiš): izmereni brojevi, nikad slike, šalju se Presage servisu i jezičkom modelu da bi se dobilo kratko objašnjenje. Piše ga AI i može da pogreši.\n• Meri samo sebe, ili nekoga ko se sa tim složio.\n\nOvo možeš ponovo pročitati ili povući saglasnost bilo kada, preko dugmeta Privatnost i saglasnost.</string>
 
     <!-- O aplikaciji -->
     <string name="about_title">O aplikaciji Ultra Talking Pulse</string>
-    <string name="about_body">Ultra Talking Pulse %1$s\n\nAutor: Demir Ajvazi.\nDeo Ultra porodice pristupačnog softvera.\nGitHub: github.com/demirajvazi10-max\n\nVitalni znaci se procenjuju pomoću Presage SmartSpectra SDK-a.\n\nLicenca: GPL-3.0.</string>
+    <string name="about_body">Ultra Talking Pulse %1$s\n\nAutor: Demir Ajvazi.\nDeo Ultra porodice pristupačnog softvera.\nGitHub: github.com/demirajvazi10-max\n\nVitalni znaci se procenjuju pomoću Presage SmartSpectra SDK-a. Hvala kompaniji Presage Technologies na podršci ovoj besplatnoj aplikaciji.\n\nSamo za opšte blagostanje. Nije medicinski uređaj.\n\nLicenca: GPL-3.0.</string>
 </resources>
